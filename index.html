@@ -217,7 +217,7 @@
                 <div class="space-y-1 p-3 border rounded-lg bg-white">
                     
                     <div class="grid grid-cols-2 gap-2 sm:gap-4 items-center border-b last:border-b-0 py-1">
-                        <label class="text-sm font-medium text-gray-700">필터 상태</label>
+                        <label class="text-sm font-medium text-gray-700">필터</label>
                         <div class="flex space-x-2 sm:space-x-4 justify-end">
                             
                                 <label class="inline-flex items-center text-xs sm:text-sm whitespace-nowrap">
@@ -240,7 +240,7 @@
 
                     
                     <div class="grid grid-cols-2 gap-2 sm:gap-4 items-center border-b last:border-b-0 py-1">
-                        <label class="text-sm font-medium text-gray-700">콘텍터 상태</label>
+                        <label class="text-sm font-medium text-gray-700">콘텍터</label>
                         <div class="flex space-x-2 sm:space-x-4 justify-end">
                             
                                 <label class="inline-flex items-center text-xs sm:text-sm whitespace-nowrap">
@@ -263,7 +263,7 @@
 
                     
                     <div class="grid grid-cols-2 gap-2 sm:gap-4 items-center border-b last:border-b-0 py-1">
-                        <label class="text-sm font-medium text-gray-700">콘덴싱 코일 상태</label>
+                        <label class="text-sm font-medium text-gray-700">콘덴싱 코일</label>
                         <div class="flex space-x-2 sm:space-x-4 justify-end">
                             
                                 <label class="inline-flex items-center text-xs sm:text-sm whitespace-nowrap">
@@ -309,7 +309,7 @@
 
                     
                     <div class="grid grid-cols-2 gap-2 sm:gap-4 items-center border-b last:border-b-0 py-1">
-                        <label class="text-sm font-medium text-gray-700">증발기 코일 상태</label>
+                        <label class="text-sm font-medium text-gray-700">증발기 코일</label>
                         <div class="flex space-x-2 sm:space-x-4 justify-end">
                             
                                 <label class="inline-flex items-center text-xs sm:text-sm whitespace-nowrap">
@@ -533,8 +533,7 @@
       <h3 id="modal-title" class="text-2xl font-bold mb-4 border-b pb-2">상세 정보</h3>
       <div id="modal-content" class="space-y-3 text-gray-700">
         </div>
-      <div class="mt-6 flex justify-end gap-3">
-        <button id="delete-btn" class="bg-red-500 text-white font-semibold py-2 px-4 rounded-lg hover:bg-red-600 transition duration-150">삭제</button>
+      <div class="mt-6 flex justify-end">
         <button id="close-modal-btn" class="bg-gray-300 text-gray-800 font-semibold py-2 px-4 rounded-lg hover:bg-gray-400 transition duration-150">닫기</button>
       </div>
     </div>
@@ -554,10 +553,10 @@
     let inspectionList = loadList(STORAGE_KEYS.INSPECTION);
     let repairList = loadList(STORAGE_KEYS.REPAIR);
 
-    // 점검 항목 레이블 (JS에서 사용)
+    // 점검 항목 레이블 (JS에서도 수정된 짧은 레이블 사용)
     const INSPECTION_CHECK_LABELS = [
-        '필터 상태', '콘텍터 상태', '콘덴싱 코일 상태', '송풍 모터', 
-        '증발기 코일 상태', '고압 센서', '저압 센서', '캐패시터'
+        '필터', '콘텍터', '콘덴싱 코일', '송풍 모터', 
+        '증발기 코일', '고압 센서', '저압 센서', '캐패시터'
     ];
 
 
@@ -924,11 +923,11 @@
             inspectionDate: formData.get('inspectionDate'),
             inspector: formData.get('inspector'),
             // Component Check (1-8)
-            check1: getRadioSelected('check1'), // 필터 상태
-            check2: getRadioSelected('check2'), // 콘텍터 상태
-            check3: getRadioSelected('check3'), // 콘덴싱 코일 상태
+            check1: getRadioSelected('check1'), // 필터
+            check2: getRadioSelected('check2'), // 콘텍터
+            check3: getRadioSelected('check3'), // 콘덴싱 코일
             check4: getRadioSelected('check4'), // 송풍 모터
-            check5: getRadioSelected('check5'), // 증발기 코일 상태
+            check5: getRadioSelected('check5'), // 증발기 코일
             check6: getRadioSelected('check6'), // 고압 센서
             check7: getRadioSelected('check7'), // 저압 센서
             check8: getRadioSelected('check8'), // 캐패시터
@@ -1068,33 +1067,7 @@
         elements.detailModal.classList.remove('hidden');
     }
 
-    // --- 데이터 삭제 ---
-    document.getElementById('delete-btn').addEventListener('click', async () => {
-        if (!currentModalData.id || !confirm(`정말로 이 ${currentModalData.type} 정보를 삭제하시겠습니까?`)) return;
-        
-        let list, renderFunc;
-
-        if (currentModalData.listKey === STORAGE_KEYS.RTU) {
-            rtuList = rtuList.filter(r => r.id !== currentModalData.id);
-            list = rtuList; renderFunc = renderRtuList;
-        } else if (currentModalData.listKey === STORAGE_KEYS.INSPECTION) {
-            inspectionList = inspectionList.filter(r => r.id !== currentModalData.id);
-            list = inspectionList; renderFunc = renderInspectionList;
-        } else if (currentModalData.listKey === STORAGE_KEYS.REPAIR) {
-            repairList = repairList.filter(r => r.id !== currentModalData.id);
-            list = repairList; renderFunc = renderRepairList;
-        } else {
-            return;
-        }
-
-        saveList(currentModalData.listKey, list);
-        document.getElementById('detail-modal').classList.add('hidden');
-        renderFunc();
-        updateDashboard();
-        populateRtuSelects(); // 드롭다운 갱신
-        alert(`${currentModalData.type} 정보가 삭제되었습니다.`);
-    });
-    
+    // --- 모달 닫기 (삭제 버튼 삭제 후 이 부분만 남김) ---
     document.getElementById('close-modal-btn').addEventListener('click', () => {
         document.getElementById('detail-modal').classList.add('hidden');
         currentModalData = { id: null, type: null };
