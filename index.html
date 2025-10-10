@@ -1,0 +1,969 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1"/>
+  <title>RTU 관리 시스템 — Drive 연동</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://apis.google.com/js/api.js"></script>
+  <style>
+    body { font-family: Inter, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial; background:#f3f4f6; }
+    .thumb { width:96px; height:72px; object-fit:cover; border-radius:6px; box-shadow:0 1px 4px rgba(0,0,0,0.08); }
+    .hidden-file { position:absolute; left:-9999px; }
+    .modal-bg { background: rgba(17,24,39,0.6); }
+  </style>
+</head>
+<body class="min-h-screen">
+  <div class="max-w-6xl mx-auto p-4 sm:p-8">
+    <div class="bg-white rounded-2xl shadow-xl p-6">
+      <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4 gap-4">
+        <div>
+          <h1 class="text-2xl sm:text-3xl font-extrabold text-indigo-700">RTU 관리 시스템</h1>
+          <p class="text-sm text-gray-600">LocalStorage + Google Drive 백업 (이미지 업로드)</p>
+        </div>
+        <div class="flex gap-2 items-center">
+          <button id="btnSignIn" class="bg-blue-600 text-white px-3 py-2 rounded">Google 로그인</button>
+          <button id="btnSignOut" class="bg-gray-100 px-3 py-2 rounded hidden">로그아웃</button>
+          <button id="btnExportAll" class="bg-gray-100 text-gray-800 px-3 py-2 rounded">전체 CSV 내보내기</button>
+          <button id="btnBackupDrive" class="bg-green-600 text-white px-3 py-2 rounded">Drive에 백업(업로드)</button>
+          <button id="btnLoadFromDrive" class="bg-indigo-50 text-indigo-700 px-3 py-2 rounded">Drive에서 복원</button>
+          <button id="btnClearDB" class="bg-red-50 text-red-700 px-3 py-2 rounded">데이터 초기화</button>
+        </div>
+      </div>
+
+      <nav class="mb-6">
+        <ul class="flex flex-wrap gap-2">
+          <li><button data-view="dashboard" class="menu-btn bg-indigo-600 text-white px-4 py-2 rounded-md">대시보드</button></li>
+          <li><button data-view="register" class="menu-btn px-4 py-2 rounded-md">장비 등록</button></li>
+          <li><button data-view="inspect" class="menu-btn px-4 py-2 rounded-md">성능 점검</button></li>
+          <li><button data-view="repair" class="menu-btn px-4 py-2 rounded-md">수리 내역</button></li>
+          <li><button data-view="report" class="menu-btn px-4 py-2 rounded-md">보고서</button></li>
+        </ul>
+      </nav>
+
+      <div id="msg" class="hidden mb-4 p-3 rounded text-sm"></div>
+
+      <main id="mainView"></main>
+    </div>
+  </div>
+
+  <div id="modalRoot"></div>
+
+<script>
+/* ============================
+   Configuration (제공된 값 사용)
+   ============================ */
+const GOOGLE_CLIENT_ID = "185785244227-1vsen1i36gkbcuc6nibdnb213hhv80h8.apps.googleusercontent.com"; // 제공된 Client ID
+const DRIVE_FOLDER_ID = "1jZh9gUFN6NJhDEre-EPWl47NXX1LZQK2"; // 제공된 폴더 ID
+const DRIVE_SCOPE = "https://www.googleapis.com/auth/drive.file https://www.googleapis.com/auth/drive.readonly";
+
+/* ============================
+   Local DB (LocalStorage)
+   ============================ */
+const DBKEYS = {
+  UNITS: 'rtu_units_v1',
+  INSPECTIONS: 'rtu_inspections_v1',
+  REPAIRS: 'rtu_repairs_v1',
+  STANDARDS: 'rtu_standards_v1'
+};
+
+const db = {
+  rtu_units: JSON.parse(localStorage.getItem(DBKEYS.UNITS) || '[]'),
+  inspections: JSON.parse(localStorage.getItem(DBKEYS.INSPECTIONS) || '[]'),
+  repairs: JSON.parse(localStorage.getItem(DBKEYS.REPAIRS) || '[]'),
+  standards: JSON.parse(localStorage.getItem(DBKEYS.STANDARDS) || '{}')
+};
+
+function saveDB(){
+  localStorage.setItem(DBKEYS.UNITS, JSON.stringify(db.rtu_units));
+  localStorage.setItem(DBKEYS.INSPECTIONS, JSON.stringify(db.inspections));
+  localStorage.setItem(DBKEYS.REPAIRS, JSON.stringify(db.repairs));
+  localStorage.setItem(DBKEYS.STANDARDS, JSON.stringify(db.standards));
+}
+
+function uid(){ return Date.now().toString(36) + Math.random().toString(36).slice(2,8); }
+
+function showMsg(text, type='info'){
+  const el = document.getElementById('msg');
+  el.textContent = text;
+  el.className = 'mb-4 p-3 rounded text-sm ' + (type==='error' ? 'bg-red-100 text-red-700' : type==='success' ? 'bg-green-100 text-green-700' : 'bg-blue-100 text-blue-700');
+  el.classList.remove('hidden');
+  setTimeout(()=>el.classList.add('hidden'), 4000);
+}
+
+/* ============================
+   Google API (gapi) Initialization
+   ============================ */
+let gapiInited = false;
+let authInstance = null;
+
+function gapiLoadClient(){
+  return new Promise(resolve => {
+    gapi.load('client:auth2', () => {
+      gapi.client.init({
+        clientId: GOOGLE_CLIENT_ID,
+        scope: DRIVE_SCOPE,
+        discoveryDocs: ["https://www.googleapis.com/discovery/v1/apis/drive/v3/rest"]
+      }).then(() => {
+        authInstance = gapi.auth2.getAuthInstance();
+        gapiInited = true;
+        updateSignUI();
+        resolve();
+      }).catch(err=>{
+        console.error("gapi init error:", err);
+        showMsg("Google API 초기화 실패: 콘솔 확인", "error");
+        resolve(); // resolve anyway so UI continues
+      });
+    });
+  });
+}
+
+function updateSignUI(){
+  const signedIn = authInstance && authInstance.isSignedIn.get();
+  document.getElementById('btnSignIn').classList.toggle('hidden', signedIn);
+  document.getElementById('btnSignOut').classList.toggle('hidden', !signedIn);
+}
+
+/* Sign-in handlers */
+document.getElementById('btnSignIn').addEventListener('click', async ()=>{
+  if(!gapiInited) await gapiLoadClient();
+  if(!authInstance){ showMsg('Google API 초기화 실패', 'error'); return; }
+  try {
+    await authInstance.signIn();
+    updateSignUI();
+    showMsg('Google 로그인 성공', 'success');
+  } catch(e){ console.error(e); showMsg('Google 로그인 실패', 'error'); }
+});
+
+document.getElementById('btnSignOut').addEventListener('click', ()=>{
+  if(authInstance){ authInstance.signOut(); updateSignUI(); showMsg('로그아웃 완료', 'info'); }
+});
+
+/* ============================
+   Drive Upload Helpers
+   ============================ */
+
+/**
+ * Upload file (Blob) to Drive inside DRIVE_FOLDER_ID.
+ * Uses multipart/related upload with metadata + media.
+ * Returns object with {id, webContentLink, webViewLink, kind,...}
+ */
+async function uploadBlobToDrive(fileBlob, filename, mimeType){
+  if(!gapiInited || !authInstance || !authInstance.isSignedIn.get()){
+    throw new Error('Google에 로그인해야 업로드할 수 있습니다.');
+  }
+  const accessToken = authInstance.currentUser.get().getAuthResponse().access_token;
+  const boundary = '-------314159265358979323846';
+  const delimiter = "\r\n--" + boundary + "\r\n";
+  const close_delim = "\r\n--" + boundary + "--";
+
+  const metadata = {
+    name: filename,
+    parents: [DRIVE_FOLDER_ID],
+    mimeType: mimeType
+  };
+
+  // Read blob as binary string then base64
+  const arrayBuffer = await fileBlob.arrayBuffer();
+  const base64Data = arrayBufferToBase64(arrayBuffer);
+
+  const multipartRequestBody =
+    delimiter +
+    'Content-Type: application/json; charset=UTF-8\r\n\r\n' +
+    JSON.stringify(metadata) +
+    delimiter +
+    'Content-Type: ' + mimeType + '\r\n' +
+    'Content-Transfer-Encoding: base64\r\n' +
+    '\r\n' +
+    base64Data +
+    close_delim;
+
+  const url = 'https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id,webViewLink,webContentLink';
+  const res = await fetch(url, {
+    method: 'POST',
+    headers: new Headers({
+      'Authorization': 'Bearer ' + accessToken,
+      'Content-Type': 'multipart/related; boundary=' + boundary
+    }),
+    body: multipartRequestBody
+  });
+
+  if(!res.ok){
+    const txt = await res.text();
+    throw new Error('Drive upload failed: ' + txt);
+  }
+  const data = await res.json();
+  // For viewer link, sometimes webViewLink needs additional permission; we'll return id and use webViewLink if present
+  return data;
+}
+
+function arrayBufferToBase64(buffer){
+  // convert to binary string
+  let binary = '';
+  const bytes = new Uint8Array(buffer);
+  const chunkSize = 0x8000;
+  for (let i = 0; i < bytes.length; i += chunkSize) {
+    const chunk = bytes.subarray(i, i + chunkSize);
+    binary += String.fromCharCode.apply(null, chunk);
+  }
+  return btoa(binary);
+}
+
+/* ============================
+   Drive: Upload JSON backup
+   ============================ */
+async function uploadJSONToDrive(filename, jsonObj){
+  if(!gapiInited || !authInstance || !authInstance.isSignedIn.get()){
+    throw new Error('Google에 로그인해야 백업 업로드 가능합니다.');
+  }
+  const blob = new Blob([JSON.stringify(jsonObj, null, 2)], {type: 'application/json'});
+  return await uploadBlobToDrive(blob, filename, 'application/json');
+}
+
+/* ============================
+   Drive: List files in folder (to find backups)
+   ============================ */
+async function listFilesInFolder(qExtra=''){
+  if(!gapiInited || !authInstance || !authInstance.isSignedIn.get()){
+    throw new Error('Google에 로그인 필요');
+  }
+  const accessToken = authInstance.currentUser.get().getAuthResponse().access_token;
+  // query: parents in folder and optionally extra
+  let q = `'${DRIVE_FOLDER_ID}' in parents and trashed=false`;
+  if(qExtra) q += ' and ' + qExtra;
+  const url = 'https://www.googleapis.com/drive/v3/files?pageSize=50&fields=files(id,name,modifiedTime,webViewLink)&q=' + encodeURIComponent(q);
+  const res = await fetch(url, { headers: { 'Authorization': 'Bearer ' + accessToken } });
+  if(!res.ok) throw new Error('List files failed: ' + await res.text());
+  return await res.json();
+}
+
+/* ============================
+   UI Rendering (views)
+   ============================ */
+const mainView = document.getElementById('mainView');
+const STATUS_MAP = {
+  '1': { ko:'정상', en:'Normal', cls:'bg-green-100 text-green-700' },
+  '2': { ko:'경고', en:'Warning', cls:'bg-yellow-100 text-yellow-700' },
+  '0': { ko:'오프라인', en:'Offline', cls:'bg-red-100 text-red-700' }
+};
+
+function renderDashboard(){
+  const total = db.rtu_units.length;
+  const running = db.rtu_units.filter(u=>u.statusCode==='1').length;
+  const stopped = db.rtu_units.filter(u=>u.statusCode==='0').length;
+  const warning = db.rtu_units.filter(u=>u.statusCode==='2').length;
+  const refrigerants = Array.from(new Set(db.rtu_units.map(u=>u.refrigerant||'N/A'))).join(' / ');
+  const powerTypes = Array.from(new Set(db.rtu_units.map(u=>u.powerType||'N/A'))).join(' / ');
+
+  let rows = '';
+  if(total===0){
+    rows = `<tr><td colspan="6" class="text-center p-4 text-gray-500">등록된 장비가 없습니다.</td></tr>`;
+  } else {
+    db.rtu_units.forEach(u=>{
+      const s = STATUS_MAP[u.statusCode] || {ko:'?',en:'?',cls:'bg-gray-100 text-gray-700'};
+      rows += `<tr class="hover:bg-gray-50">
+        <td class="p-2 text-sm font-medium">${escapeHtml(u.rtuId)}</td>
+        <td class="p-2 text-sm">${escapeHtml(u.model)}</td>
+        <td class="p-2 text-sm">${escapeHtml(u.capacity)}</td>
+        <td class="p-2 text-sm">${escapeHtml(u.location)}</td>
+        <td class="p-2 text-sm"><span class="px-2 py-0.5 rounded ${s.cls} text-xs">${s.ko} / ${s.en}</span></td>
+        <td class="p-2 text-right text-sm">
+          <button onclick="openUnitDetail('${u._id}')" class="text-indigo-600 font-semibold mr-2">세부</button>
+          <button onclick="editUnit('${u._id}')" class="text-yellow-600 mr-2">수정</button>
+          <button onclick="deleteUnit('${u._id}')" class="text-red-600">삭제</button>
+        </td>
+      </tr>`;
+    });
+  }
+
+  return `
+    <section>
+      <div class="grid grid-cols-2 sm:grid-cols-6 gap-4 mb-4">
+        <div class="bg-gray-50 p-4 rounded-xl text-center"><div class="text-sm text-gray-500">등록된 장비 수</div><div class="text-2xl font-bold">${total}</div></div>
+        <div class="bg-gray-50 p-4 rounded-xl text-center"><div class="text-sm text-gray-500">작동 중</div><div class="text-2xl font-bold text-green-600">${running}</div></div>
+        <div class="bg-gray-50 p-4 rounded-xl text-center"><div class="text-sm text-gray-500">정지됨</div><div class="text-2xl font-bold text-red-600">${stopped}</div></div>
+        <div class="bg-gray-50 p-4 rounded-xl text-center"><div class="text-sm text-gray-500">점검 필요</div><div class="text-2xl font-bold text-yellow-600">${warning}</div></div>
+        <div class="bg-gray-50 p-4 rounded-xl text-center col-span-2 sm:col-span-1"><div class="text-sm text-gray-500">냉매 종류</div><div class="text-lg font-bold">${escapeHtml(refrigerants)}</div></div>
+        <div class="bg-gray-50 p-4 rounded-xl text-center col-span-2 sm:col-span-1"><div class="text-sm text-gray-500">전기 종류</div><div class="text-lg font-bold">${escapeHtml(powerTypes)}</div></div>
+      </div>
+
+      <div class="overflow-x-auto rounded-lg border border-gray-200">
+        <table class="min-w-full">
+          <thead class="bg-gray-50"><tr>
+            <th class="p-2 text-left text-xs text-gray-500">RTU ID</th>
+            <th class="p-2 text-left text-xs text-gray-500">Model</th>
+            <th class="p-2 text-left text-xs text-gray-500">Capacity</th>
+            <th class="p-2 text-left text-xs text-gray-500">Location</th>
+            <th class="p-2 text-left text-xs text-gray-500">Status</th>
+            <th class="p-2 text-right text-xs text-gray-500">Actions</th>
+          </tr></thead>
+          <tbody>${rows}</tbody>
+        </table>
+      </div>
+    </section>
+  `;
+}
+
+function renderRegisterForm(editObj=null){
+  const s = editObj ? editObj : { rtuId:'', model:'', capacity:'', unitType:'', location:'', refrigerant:'', powerType:'', statusCode:'1', memo:'', photos:[], pressureStandards:{} };
+  const photosHtml = (s.photos||[]).map((p,i)=>`<img src="${p}" class="thumb mr-2 mb-2" data-i="${i}">`).join('') || '';
+  const ps = s.pressureStandards || {};
+  return `
+    <section>
+      <h2 class="text-xl font-bold mb-3">장비 등록 / Register Unit</h2>
+      <form id="formRegister" class="space-y-3 max-w-2xl">
+        <input type="hidden" id="unit__id" value="${s._id || ''}">
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <input id="f_rtuId" required placeholder="RTU 등록번호 (RTU ID)" value="${escapeHtml(s.rtuId||'')}" class="p-3 border rounded" />
+          <input id="f_model" required placeholder="모델 (Model)" value="${escapeHtml(s.model||'')}" class="p-3 border rounded" />
+          <input id="f_capacity" required placeholder="용량 (Capacity)" value="${escapeHtml(s.capacity||'')}" class="p-3 border rounded" />
+          <select id="f_unitType" class="p-3 border rounded">
+            <option value="">유닛 유형 / Unit Type</option>
+            <option value="Package" ${s.unitType==='Package'?'selected':''}>Package</option>
+            <option value="Split" ${s.unitType==='Split'?'selected':''}>Split</option>
+            <option value="Chiller" ${s.unitType==='Chiller'?'selected':''}>Chiller</option>
+          </select>
+          <input id="f_refrigerant" placeholder="냉매 종류 (Refrigerant)" value="${escapeHtml(s.refrigerant||'')}" class="p-3 border rounded" />
+          <select id="f_powerType" class="p-3 border rounded">
+            <option value="">전기 종류 / Power Type</option>
+            <option value="Single" ${s.powerType==='Single'?'selected':''}>단상 / Single</option>
+            <option value="Three" ${s.powerType==='Three'?'selected':''}>삼상 / Three</option>
+          </select>
+        </div>
+
+        <input id="f_location" required placeholder="설치 장소 (Location)" value="${escapeHtml(s.location||'')}" class="p-3 border rounded w-full" />
+        <div class="grid grid-cols-2 gap-3">
+          <select id="f_status" class="p-3 border rounded">
+            <option value="1" ${s.statusCode==='1'?'selected':''}>1 (정상)</option>
+            <option value="2" ${s.statusCode==='2'?'selected':''}>2 (경고)</option>
+            <option value="0" ${s.statusCode==='0'?'selected':''}>0 (오프라인)</option>
+          </select>
+          <input id="f_powerNote" placeholder="전기 메모 (옵션)" value="${escapeHtml(s.powerNote||'')}" class="p-3 border rounded" />
+        </div>
+
+        <textarea id="f_memo" rows="3" placeholder="기타 메모" class="p-3 border rounded w-full">${escapeHtml(s.memo||'')}</textarea>
+
+        <div class="border p-3 rounded bg-gray-50">
+          <div class="flex items-center justify-between mb-3">
+            <div class="font-semibold">사진 업로드 (최대 3장)</div>
+            <div class="text-xs text-gray-500">모바일: 카메라 선택 가능</div>
+          </div>
+          <div id="photoPreview" class="flex gap-2 flex-wrap mb-3">${photosHtml}</div>
+          <input id="photoInput" type="file" accept="image/*" capture="environment" class="hidden-file" />
+          <div class="flex gap-2">
+            <label for="photoInput" class="bg-indigo-600 text-white px-3 py-2 rounded cursor-pointer">사진 추가 (카메라/파일)</label>
+            <button type="button" id="clearPhotosBtn" class="bg-gray-100 px-3 py-2 rounded">사진 초기화</button>
+          </div>
+        </div>
+
+        <div class="border p-3 rounded bg-yellow-50 mb-2">
+          <div class="font-semibold mb-2">압력 스탠다드 (장비별) — 장비 등록시 설정</div>
+          <div class="grid grid-cols-1 sm:grid-cols-4 gap-2">
+            <input id="ps_comp1_min" placeholder="Comp1 HP Min (psi)" value="${ps.comp1_hp_min||''}" class="p-2 border rounded" />
+            <input id="ps_comp1_max" placeholder="Comp1 HP Max (psi)" value="${ps.comp1_hp_max||''}" class="p-2 border rounded" />
+            <input id="ps_comp1_lp_min" placeholder="Comp1 LP Min (psi)" value="${ps.comp1_lp_min||''}" class="p-2 border rounded" />
+            <input id="ps_comp1_lp_max" placeholder="Comp1 LP Max (psi)" value="${ps.comp1_lp_max||''}" class="p-2 border rounded" />
+          </div>
+        </div>
+
+        <div class="flex gap-2">
+          <button class="bg-green-600 text-white px-4 py-2 rounded" type="submit">${editObj ? '수정 저장' : '저장'}</button>
+          <button type="button" id="btnCancelRegister" class="bg-gray-100 px-4 py-2 rounded">취소</button>
+        </div>
+      </form>
+    </section>
+  `;
+}
+
+function renderInspectForm(){
+  const options = db.rtu_units.map(u=>`<option value="${u._id}">${escapeHtml(u.rtuId)} (${escapeHtml(u.location||'N/A')})</option>`).join('');
+  return `
+    <section>
+      <h2 class="text-xl font-bold mb-3">성능 점검 / Inspection</h2>
+      <form id="formInspect" class="space-y-3 max-w-2xl">
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+          <select id="insp_rtuId" required class="p-3 border rounded"><option value="">RTU 선택</option>${options}</select>
+          <input id="insp_inspector" required placeholder="점검자" class="p-3 border rounded" />
+          <input id="insp_date" type="date" required class="p-3 border rounded" />
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+          <div class="border p-3 rounded bg-indigo-50">
+            <h3 class="font-bold mb-2">컴프레서1 / Compressor 1</h3>
+            <input id="insp_c1_hp" required placeholder="고압 (HP) (psi)" type="number" step="0.1" class="p-2 border rounded w-full mb-2" />
+            <input id="insp_c1_lp" required placeholder="저압 (LP) (psi)" type="number" step="0.1" class="p-2 border rounded w-full mb-2" />
+            <input id="insp_c1_amp" required placeholder="암페어 (Amp) (A)" type="number" step="0.1" class="p-2 border rounded w-full" />
+          </div>
+          <div class="border p-3 rounded bg-indigo-50">
+            <h3 class="font-bold mb-2">컴프레서2 / Compressor 2</h3>
+            <input id="insp_c2_hp" placeholder="고압 (HP) (psi)" type="number" step="0.1" class="p-2 border rounded w-full mb-2" />
+            <input id="insp_c2_lp" placeholder="저압 (LP) (psi)" type="number" step="0.1" class="p-2 border rounded w-full mb-2" />
+            <input id="insp_c2_amp" placeholder="암페어 (Amp) (A)" type="number" step="0.1" class="p-2 border rounded w-full" />
+          </div>
+        </div>
+
+        <div class="border p-3 rounded bg-yellow-50">
+          <h3 class="font-bold mb-2">온도 측정 (°F)</h3>
+          <div class="grid grid-cols-1 sm:grid-cols-3 gap-2">
+            <input id="insp_sh" required placeholder="과열도 (Superheat) (°F)" type="number" step="0.1" class="p-2 border rounded" />
+            <input id="insp_sc" required placeholder="과냉도 (Subcool) (°F)" type="number" step="0.1" class="p-2 border rounded" />
+            <input id="insp_evap" required placeholder="증발기 온도 (Evap) (°F)" type="number" step="0.1" class="p-2 border rounded" />
+          </div>
+        </div>
+
+        <div class="border p-3 rounded bg-gray-50">
+          <h3 class="font-bold mb-2">외관 검사</h3>
+          <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 text-sm">
+            ${renderCheckControl('filterState','필터 / Filter')}
+            ${renderCheckControl('contactorState','콘텍터 / Contactor')}
+            ${renderCheckControl('coilState','콘덴싱 코일 / Condensing Coil')}
+            ${renderCheckControl('blowerState','송풍 모터 / Blower Motor')}
+            ${renderCheckControl('evapCoilState','증발기 코일 / Evaporator Coil')}
+            ${renderCheckControl('sensorState','센서 (HP/LP) / Sensors')}
+            ${renderCheckControl('capacitorState','캐패시터 / Capacitor')}
+          </div>
+        </div>
+
+        <textarea id="insp_notes" placeholder="특이사항" class="p-3 border rounded w-full"></textarea>
+
+        <div class="flex gap-2">
+          <button class="bg-indigo-600 text-white px-4 py-2 rounded" type="submit">점검 저장</button>
+          <button type="button" id="btnCancelInspect" class="bg-gray-100 px-4 py-2 rounded">취소</button>
+        </div>
+      </form>
+    </section>
+  `;
+}
+
+function renderCheckControl(name,label){
+  return `
+    <div class="p-2 border rounded bg-white">
+      <div class="font-medium mb-2">${label}</div>
+      <div class="flex gap-2">
+        <label class="flex items-center gap-2"><input type="radio" name="${name}" value="양호" required>양호</label>
+        <label class="flex items-center gap-2"><input type="radio" name="${name}" value="불량">불량</label>
+      </div>
+    </div>
+  `;
+}
+
+function renderRepairForm(){
+  const options = db.rtu_units.map(u=>`<option value="${u._id}">${escapeHtml(u.rtuId)} (${escapeHtml(u.location||'N/A')})</option>`).join('');
+  return `
+    <section>
+      <h2 class="text-xl font-bold mb-3">수리 내역 / Repair</h2>
+      <form id="formRepair" class="space-y-3 max-w-2xl">
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-2">
+          <select id="rep_rtuId" class="p-3 border rounded" required><option value="">RTU 선택</option>${options}</select>
+          <input id="rep_worker" required placeholder="작업자" class="p-3 border rounded" />
+          <input id="rep_date" type="date" required class="p-3 border rounded" />
+        </div>
+        <input id="rep_parts" placeholder="부품" class="p-3 border rounded w-full" />
+        <textarea id="rep_details" placeholder="작업 내용" class="p-3 border rounded w-full"></textarea>
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
+          <input id="rep_cost" type="number" step="0.01" placeholder="수리 비용 (USD)" class="p-3 border rounded" />
+          <select id="rep_status" class="p-3 border rounded">
+            <option value="수리진행">수리 진행</option>
+            <option value="수리완료">수리 완료</option>
+            <option value="보류">보류</option>
+          </select>
+        </div>
+        <div class="flex gap-2">
+          <button class="bg-indigo-600 text-white px-4 py-2 rounded" type="submit">저장</button>
+          <button type="button" id="btnCancelRepair" class="bg-gray-100 px-4 py-2 rounded">취소</button>
+        </div>
+      </form>
+    </section>
+  `;
+}
+
+function renderReportView(){
+  const recentInsps = db.inspections.slice().reverse().slice(0,5).map(i=>`
+    <div class="p-3 bg-white rounded border">
+      <div class="flex justify-between items-start">
+        <div>
+          <div class="font-bold text-indigo-600">${escapeHtml(i.rtuIdDisplay)}</div>
+          <div class="text-sm text-gray-600">${escapeHtml(i.inspectionDate)} / ${escapeHtml(i.inspector)}</div>
+        </div>
+        <div class="text-xs text-gray-500">${i.timestamp?i.timestamp.slice(0,10):''}</div>
+      </div>
+      <div class="text-xs text-gray-700 mt-2">SH:${i.temp_sh}°F / SC:${i.temp_sc}°F / Evap:${i.temp_evap}°F</div>
+      <div class="text-xs text-red-600 mt-1 italic">${escapeHtml(i.notes||'')}</div>
+    </div>
+  `).join('') || '<p class="text-gray-500">점검 기록 없음</p>';
+
+  const recentReps = db.repairs.slice().reverse().slice(0,5).map(r=>`
+    <div class="p-3 bg-white rounded border">
+      <div class="font-bold text-indigo-600">${escapeHtml(r.rtuIdDisplay)}</div>
+      <div class="text-sm text-gray-600">${escapeHtml(r.repairDate)} / ${escapeHtml(r.worker)}</div>
+      <div class="text-xs text-gray-700 mt-1">${escapeHtml(r.workDetails||'')}</div>
+    </div>
+  `).join('') || '<p class="text-gray-500">수리 기록 없음</p>';
+
+  // pressure exceed/miss scanning by each inspection compared to unit's standards
+  let exceedReport = '';
+  const found = db.inspections.reduce((acc,i)=>{
+    const unit = db.rtu_units.find(u=>u._id===i.rtuIdRef);
+    if(!unit || !unit.pressureStandards) return acc;
+    const std = unit.pressureStandards;
+    const hp = parseFloat(i.comp1_hp);
+    if(!isNaN(hp)){
+      if(std.comp1_hp_max && hp > parseFloat(std.comp1_hp_max)) acc.push({type:'High', item:'Comp1 HP', val:hp, rtu: i.rtuIdDisplay});
+      if(std.comp1_hp_min && hp < parseFloat(std.comp1_hp_min)) acc.push({type:'Low', item:'Comp1 HP', val:hp, rtu: i.rtuIdDisplay});
+    }
+    const lp = parseFloat(i.comp1_lp);
+    if(!isNaN(lp)){
+      if(std.comp1_lp_max && lp > parseFloat(std.comp1_lp_max)) acc.push({type:'High', item:'Comp1 LP', val:lp, rtu: i.rtuIdDisplay});
+      if(std.comp1_lp_min && lp < parseFloat(std.comp1_lp_min)) acc.push({type:'Low', item:'Comp1 LP', val:lp, rtu: i.rtuIdDisplay});
+    }
+    return acc;
+  }, []);
+
+  if(found.length===0) exceedReport = '<p class="text-green-700">초과/미달 항목 없음</p>';
+  else exceedReport = found.slice(0,20).map(f=>`<div class="text-sm text-red-600">${escapeHtml(f.rtu)} — ${f.item} ${f.type} (${f.val})</div>`).join('');
+
+  return `
+    <section>
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-4">
+        <div><h3 class="font-bold mb-2">최근 점검</h3>${recentInsps}</div>
+        <div><h3 class="font-bold mb-2">최근 수리</h3>${recentReps}</div>
+      </div>
+
+      <div class="mt-2 p-4 border rounded bg-red-50">
+        <h3 class="font-bold text-red-700 mb-2">압력 스탠다드 기반 초과/미달 보고</h3>
+        <div id="stdReport">${exceedReport}</div>
+      </div>
+    </section>
+  `;
+}
+
+/* ============================
+   Render / Navigation
+   ============================ */
+function renderView(name, editObj=null){
+  if(name==='dashboard') mainView.innerHTML = renderDashboard();
+  if(name==='register') mainView.innerHTML = renderRegisterForm(editObj);
+  if(name==='inspect') mainView.innerHTML = renderInspectForm();
+  if(name==='repair') mainView.innerHTML = renderRepairForm();
+  if(name==='report') mainView.innerHTML = renderReportView();
+  wireUpView(name);
+}
+
+document.querySelectorAll('.menu-btn').forEach(btn=>{
+  btn.addEventListener('click', ()=>{
+    document.querySelectorAll('.menu-btn').forEach(b=>b.classList.remove('bg-indigo-600','text-white'));
+    btn.classList.add('bg-indigo-600','text-white');
+    const v = btn.getAttribute('data-view');
+    renderView(v);
+    window.scrollTo({top:0,behavior:'smooth'});
+  });
+});
+
+// default
+document.querySelector('[data-view="dashboard"]').click();
+
+/* ============================
+   Wire up each view's controls
+   ============================ */
+function wireUpView(name){
+  if(name==='register'){
+    // photo handling for register form
+    const fileInput = document.getElementById('photoInput');
+    const preview = document.getElementById('photoPreview');
+    let photoArray = [];
+    const hid = document.getElementById('unit__id').value;
+    if(hid){
+      const unit = db.rtu_units.find(u=>u._id===hid);
+      if(unit && unit.photos) photoArray = unit.photos.slice();
+    }
+
+    function renderPhotos(){
+      preview.innerHTML = '';
+      photoArray.forEach((p,i)=>{
+        const box = document.createElement('div');
+        box.className = 'relative';
+        box.innerHTML = `<img src="${p}" class="thumb" /><button type="button" class="absolute -top-2 -right-2 bg-red-500 text-white rounded-full w-6 h-6 text-xs" data-i="${i}">X</button>`;
+        preview.appendChild(box);
+      });
+      // remove buttons
+      preview.querySelectorAll('button[data-i]').forEach(b=>{
+        b.addEventListener('click', ()=>{
+          const i = parseInt(b.getAttribute('data-i'));
+          photoArray.splice(i,1);
+          renderPhotos();
+        });
+      });
+    }
+    renderPhotos();
+
+    fileInput.onchange = async (e)=>{
+      const f = e.target.files[0];
+      if(!f) return;
+      if(photoArray.length >= 3){ showMsg('사진은 최대 3장까지 업로드 가능합니다.', 'error'); fileInput.value=''; return; }
+
+      // immediate preview using local URL
+      const objUrl = URL.createObjectURL(f);
+      photoArray.push(objUrl);
+      renderPhotos();
+
+      // If signed in, upload to Drive and replace preview URL with drive link
+      if(gapiInited && authInstance && authInstance.isSignedIn.get()){
+        try {
+          showMsg('이미지 Drive 업로드 중...', 'info');
+          const res = await uploadBlobToDrive(f, `${Date.now()}_${f.name}`, f.type);
+          // To get usable image URL, construct webContentLink if available, otherwise use webViewLink
+          // webContentLink may require permission; but webViewLink is a viewer page. Use "https://drive.google.com/uc?export=view&id=FILE_ID"
+          const fileId = res.id;
+          const driveUrl = `https://drive.google.com/uc?export=view&id=${fileId}`;
+          // replace last preview (object URL) with driveUrl
+          photoArray[photoArray.length-1] = driveUrl;
+          renderPhotos();
+          showMsg('이미지 업로드 완료 (Drive)', 'success');
+        } catch(err){
+          console.error(err);
+          showMsg('이미지 업로드 실패: ' + (err.message||err), 'error');
+        }
+      } else {
+        showMsg('오프라인 모드: 로컬 미리보기만 저장됩니다. Drive에 업로드하려면 Google로 로그인하세요.', 'info');
+      }
+
+      fileInput.value = '';
+    };
+
+    document.getElementById('clearPhotosBtn').onclick = ()=>{ photoArray = []; renderPhotos(); };
+
+    document.getElementById('formRegister').onsubmit = (ev)=>{
+      ev.preventDefault();
+      const id = document.getElementById('unit__id').value || uid();
+      const payload = {
+        _id: id,
+        rtuId: document.getElementById('f_rtuId').value.trim(),
+        model: document.getElementById('f_model').value.trim(),
+        capacity: document.getElementById('f_capacity').value.trim(),
+        unitType: document.getElementById('f_unitType').value,
+        location: document.getElementById('f_location').value.trim(),
+        refrigerant: document.getElementById('f_refrigerant').value.trim(),
+        powerType: document.getElementById('f_powerType').value,
+        powerNote: document.getElementById('f_powerNote').value.trim(),
+        statusCode: document.getElementById('f_status').value,
+        memo: document.getElementById('f_memo').value.trim(),
+        photos: photoArray.slice(),
+        registrationDate: new Date().toISOString(),
+        pressureStandards: {
+          comp1_hp_min: document.getElementById('ps_comp1_min').value || undefined,
+          comp1_hp_max: document.getElementById('ps_comp1_max').value || undefined,
+          comp1_lp_min: document.getElementById('ps_comp1_lp_min').value || undefined,
+          comp1_lp_max: document.getElementById('ps_comp1_lp_max').value || undefined
+        }
+      };
+      if(!payload.rtuId){ showMsg('RTU 등록번호를 입력하세요', 'error'); return; }
+      const idx = db.rtu_units.findIndex(u=>u._id===id);
+      if(idx>=0){ db.rtu_units[idx] = payload; showMsg('장비 정보 업데이트 완료', 'success'); }
+      else { db.rtu_units.push(payload); showMsg('새 장비 등록 완료', 'success'); }
+      saveDB();
+      document.querySelector('[data-view="dashboard"]').click();
+    };
+
+    document.getElementById('btnCancelRegister').onclick = ()=>document.querySelector('[data-view="dashboard"]').click();
+  }
+
+  if(name==='inspect'){
+    // default date today
+    const dEl = document.getElementById('insp_date');
+    dEl.value = new Date().toISOString().slice(0,10);
+
+    document.getElementById('formInspect').onsubmit = (ev)=>{
+      ev.preventDefault();
+      const rtuIdDoc = document.getElementById('insp_rtuId').value;
+      if(!rtuIdDoc){ showMsg('RTU 선택 필요', 'error'); return; }
+      const unitRef = db.rtu_units.find(u=>u._id===rtuIdDoc);
+      const payload = {
+        _id: uid(),
+        rtuIdRef: rtuIdDoc,
+        rtuIdDisplay: unitRef ? unitRef.rtuId : 'N/A',
+        inspector: document.getElementById('insp_inspector').value.trim(),
+        inspectionDate: document.getElementById('insp_date').value,
+        comp1_hp: document.getElementById('insp_c1_hp').value,
+        comp1_lp: document.getElementById('insp_c1_lp').value,
+        comp1_amp: document.getElementById('insp_c1_amp').value,
+        comp2_hp: document.getElementById('insp_c2_hp').value,
+        comp2_lp: document.getElementById('insp_c2_lp').value,
+        comp2_amp: document.getElementById('insp_c2_amp').value,
+        temp_sh: document.getElementById('insp_sh').value,
+        temp_sc: document.getElementById('insp_sc').value,
+        temp_evap: document.getElementById('insp_evap').value,
+        filterState: getRadioValue('filterState'),
+        contactorState: getRadioValue('contactorState'),
+        coilState: getRadioValue('coilState'),
+        blowerState: getRadioValue('blowerState'),
+        evapCoilState: getRadioValue('evapCoilState'),
+        sensorState: getRadioValue('sensorState'),
+        capacitorState: getRadioValue('capacitorState'),
+        notes: document.getElementById('insp_notes').value.trim(),
+        timestamp: new Date().toISOString()
+      };
+      db.inspections.push(payload);
+      // update unit status based on visual checks
+      const anyBad = ['filterState','contactorState','coilState','blowerState','evapCoilState','sensorState','capacitorState'].some(k=>payload[k]==='불량');
+      const unit = db.rtu_units.find(u=>u._id===rtuIdDoc);
+      if(unit){ unit.statusCode = anyBad ? '2' : '1'; }
+      saveDB();
+      showMsg('점검 저장 완료', 'success');
+      document.querySelector('[data-view="dashboard"]').click();
+    };
+
+    document.getElementById('btnCancelInspect').onclick = ()=>document.querySelector('[data-view="dashboard"]').click();
+  }
+
+  if(name==='repair'){
+    document.getElementById('formRepair').onsubmit = (ev)=>{
+      ev.preventDefault();
+      const rtuIdDoc = document.getElementById('rep_rtuId').value;
+      if(!rtuIdDoc){ showMsg('RTU 선택 필요', 'error'); return; }
+      const unitRef = db.rtu_units.find(u=>u._id===rtuIdDoc);
+      const payload = {
+        _id: uid(),
+        rtuIdRef: rtuIdDoc,
+        rtuIdDisplay: unitRef ? unitRef.rtuId : 'N/A',
+        worker: document.getElementById('rep_worker').value.trim(),
+        repairDate: document.getElementById('rep_date').value,
+        partsUsed: document.getElementById('rep_parts').value.trim(),
+        workDetails: document.getElementById('rep_details').value.trim(),
+        cost: document.getElementById('rep_cost').value ? parseFloat(document.getElementById('rep_cost').value) : null,
+        status: document.getElementById('rep_status').value,
+        timestamp: new Date().toISOString()
+      };
+      db.repairs.push(payload);
+      saveDB();
+      showMsg('수리 내역 저장 완료', 'success');
+      document.querySelector('[data-view="dashboard"]').click();
+    };
+    document.getElementById('btnCancelRepair').onclick = ()=>document.querySelector('[data-view="dashboard"]').click();
+  }
+
+  if(name==='report'){
+    const btn = document.getElementById('btnSaveStd');
+    if(btn){
+      btn.onclick = ()=>{
+        const min = document.getElementById('std_comp1_hp_min').value;
+        const max = document.getElementById('std_comp1_hp_max').value;
+        db.standards.comp1_hp_min = min || undefined;
+        db.standards.comp1_hp_max = max || undefined;
+        saveDB();
+        showMsg('스탠다드 저장', 'success');
+        renderView('report');
+      };
+    }
+  }
+}
+
+/* ============================
+   Utility helpers
+   ============================ */
+function getRadioValue(name){
+  const nodes = document.getElementsByName(name);
+  for(const n of nodes) if(n.checked) return n.value;
+  return '';
+}
+function escapeHtml(s){ if(!s) return ''; return String(s).replace(/[&<>"']/g, c=>({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' })[c]); }
+
+/* ============================
+   Unit operations: detail/edit/delete
+   ============================ */
+function openUnitDetail(id){
+  const unit = db.rtu_units.find(u=>u._id===id);
+  if(!unit) return showMsg('장비를 찾을 수 없습니다', 'error');
+  const modalRoot = document.getElementById('modalRoot');
+  const photosHtml = (unit.photos||[]).map(p=>`<img src="${p}" class="w-32 h-24 object-cover rounded shadow mr-2 mb-2" />`).join('') || '<p class="text-sm text-gray-500">사진 없음</p>';
+  const el = document.createElement('div');
+  el.className = 'fixed inset-0 z-50 flex items-center justify-center modal-bg';
+  el.innerHTML = `
+    <div class="bg-white rounded-lg max-w-lg w-full p-6 shadow-xl">
+      <div class="flex justify-between items-start">
+        <div>
+          <h3 class="font-bold text-xl text-indigo-700">${escapeHtml(unit.rtuId)} — ${escapeHtml(unit.model)}</h3>
+          <div class="text-sm text-gray-600">위치: ${escapeHtml(unit.location)}</div>
+        </div>
+        <div><button id="closeM" class="text-gray-600">X</button></div>
+      </div>
+      <div class="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-3">
+        <div>
+          <p class="text-sm"><b>용량:</b> ${escapeHtml(unit.capacity)}</p>
+          <p class="text-sm mt-1"><b>유닛유형:</b> ${escapeHtml(unit.unitType)}</p>
+          <p class="text-sm mt-1"><b>냉매:</b> ${escapeHtml(unit.refrigerant)}</p>
+          <p class="text-sm mt-1"><b>전기:</b> ${escapeHtml(unit.powerType)}</p>
+          <p class="text-sm mt-1"><b>메모:</b> ${escapeHtml(unit.memo||'')}</p>
+        </div>
+        <div>
+          <div class="font-semibold mb-2">사진</div>
+          <div>${photosHtml}</div>
+        </div>
+      </div>
+      <div class="mt-4 flex gap-2">
+        <button id="closeBtn" class="bg-indigo-600 text-white px-4 py-2 rounded">닫기</button>
+        <button id="gotoInspect" class="bg-green-50 text-green-700 px-4 py-2 rounded">이 장비 점검</button>
+      </div>
+    </div>
+  `;
+  modalRoot.appendChild(el);
+  el.querySelector('#closeM').onclick = ()=>el.remove();
+  el.querySelector('#closeBtn').onclick = ()=>el.remove();
+  el.querySelector('#gotoInspect').onclick = ()=>{
+    el.remove();
+    document.querySelector('[data-view="inspect"]').click();
+    setTimeout(()=>{ const sel = document.getElementById('insp_rtuId'); if(sel) sel.value = id; }, 200);
+  };
+}
+
+function editUnit(id){
+  const unit = db.rtu_units.find(u=>u._id===id);
+  if(!unit) return showMsg('편집할 장비를 찾을 수 없습니다', 'error');
+  // render register with edit object
+  renderView('register', unit);
+  setTimeout(()=>{ /* wireUpView will be called inside renderView */ }, 100);
+}
+
+function deleteUnit(id){
+  if(!confirm('정말 삭제하시겠습니까?')) return;
+  const idx = db.rtu_units.findIndex(u=>u._id===id);
+  if(idx>=0){ db.rtu_units.splice(idx,1); saveDB(); showMsg('장비 삭제됨','success'); renderView('dashboard'); }
+}
+
+/* expose to global for buttons in table */
+window.openUnitDetail = openUnitDetail;
+window.editUnit = editUnit;
+window.deleteUnit = deleteUnit;
+
+/* ============================
+   CSV Export & Clear DB
+   ============================ */
+function downloadCSV(filename, rows){
+  const csv = rows.join('\n');
+  const blob = new Blob(["\ufeff"+csv], { type: 'text/csv;charset=utf-8;' });
+  const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = filename; a.click();
+}
+function exportCollectionAsCSV(name, arr){
+  if(!arr || arr.length===0){ showMsg(name + ' 데이터 없음','info'); return; }
+  const keys = Object.keys(arr[0]);
+  const header = keys.map(k=>`"${k.replace(/"/g,'""')}"`).join(',');
+  const lines = arr.map(o => keys.map(k => `"${String(o[k] ?? '').replace(/"/g,'""')}"`).join(','));
+  downloadCSV(name + '.csv', [header, ...lines]);
+}
+
+document.getElementById('btnExportAll').onclick = ()=>{
+  exportCollectionAsCSV('rtu_units', db.rtu_units);
+  exportCollectionAsCSV('inspections', db.inspections);
+  exportCollectionAsCSV('repairs', db.repairs);
+  showMsg('CSV 내보내기 완료','success');
+};
+
+document.getElementById('btnClearDB').onclick = ()=>{
+  if(!confirm('로컬 데이터가 모두 삭제됩니다. 계속할까요?')) return;
+  localStorage.removeItem(DBKEYS.UNITS); localStorage.removeItem(DBKEYS.INSPECTIONS); localStorage.removeItem(DBKEYS.REPAIRS); localStorage.removeItem(DBKEYS.STANDARDS);
+  db.rtu_units=[]; db.inspections=[]; db.repairs=[]; db.standards={};
+  showMsg('데이터 초기화 완료','success');
+  renderView('dashboard');
+};
+
+/* ============================
+   Drive Backup (upload JSON) & Restore
+   ============================ */
+document.getElementById('btnBackupDrive').onclick = async ()=>{
+  try {
+    if(!gapiInited) await gapiLoadClient();
+    if(!authInstance || !authInstance.isSignedIn.get()){ showMsg('먼저 Google로 로그인하세요','error'); return; }
+    showMsg('Drive에 백업 중...', 'info');
+    const backupObj = {
+      meta: { createdAt: new Date().toISOString() },
+      rtu_units: db.rtu_units,
+      inspections: db.inspections,
+      repairs: db.repairs,
+      standards: db.standards
+    };
+    const filename = `rtu_backup_${new Date().toISOString().slice(0,19).replace(/[:T]/g,'-')}.json`;
+    await uploadJSONToDrive(filename, backupObj);
+    showMsg('Drive 백업 완료', 'success');
+  } catch(err){
+    console.error(err);
+    showMsg('백업 실패: ' + (err.message||err), 'error');
+  }
+};
+
+document.getElementById('btnLoadFromDrive').onclick = async ()=>{
+  try {
+    if(!gapiInited) await gapiLoadClient();
+    if(!authInstance || !authInstance.isSignedIn.get()){ showMsg('먼저 Google로 로그인하세요','error'); return; }
+    showMsg('Drive에서 백업 파일 목록을 불러옵니다...', 'info');
+    // list JSON files in the folder
+    const listRes = await listFilesInFolder("mimeType='application/json'");
+    if(!listRes.files || listRes.files.length===0){ showMsg('백업 파일이 없습니다.', 'info'); return; }
+    // pick the latest by modifiedTime
+    const sorted = listRes.files.sort((a,b)=> new Date(b.modifiedTime || b.modifiedDate || 0) - new Date(a.modifiedTime || a.modifiedDate || 0));
+    // prompt user to choose or auto pick latest
+    const latest = sorted[0];
+    if(!confirm(`가장 최근 백업 파일 "${latest.name}" 을(를) 불러오시겠습니까? 로컬 데이터는 덮어써집니다.`)) return;
+    // fetch file content
+    const accessToken = authInstance.currentUser.get().getAuthResponse().access_token;
+    const res = await fetch(`https://www.googleapis.com/drive/v3/files/${latest.id}?alt=media`, { headers: { Authorization: 'Bearer ' + accessToken } });
+    if(!res.ok) throw new Error('파일 다운로드 실패: ' + await res.text());
+    const json = await res.json();
+    // overwrite local DB after confirmation
+    db.rtu_units = json.rtu_units || [];
+    db.inspections = json.inspections || [];
+    db.repairs = json.repairs || [];
+    db.standards = json.standards || {};
+    saveDB();
+    showMsg('복원 완료 — 로컬 데이터가 업데이트되었습니다', 'success');
+    renderView('dashboard');
+  } catch(err){
+    console.error(err);
+    showMsg('복원 실패: ' + (err.message||err), 'error');
+  }
+};
+
+/* ============================
+   Start gapi in background (non-blocking)
+   ============================ */
+gapiLoadClient().then(()=>console.log('gapi initialized'));
+
+/* ============================
+   Small helpers: convert dataURL to Blob (not used currently but kept)
+   ============================ */
+function dataURLToBlob(dataurl) {
+  const arr = dataurl.split(',');
+  const mime = arr[0].match(/:(.*?);/)[1];
+  const bstr = atob(arr[1]);
+  let n = bstr.length;
+  const u8arr = new Uint8Array(n);
+  while(n--){
+    u8arr[n] = bstr.charCodeAt(n);
+  }
+  return new Blob([u8arr], {type:mime});
+}
+
+/* ============================
+   Utility: list files in folder - used earlier
+   ============================ */
+async function fetchFileContent(fileId){
+  if(!gapiInited || !authInstance || !authInstance.isSignedIn.get()) throw new Error('Not signed in');
+  const accessToken = authInstance.currentUser.get().getAuthResponse().access_token;
+  const r = await fetch(`https://www.googleapis.com/drive/v3/files/${fileId}?alt=media`, { headers: { Authorization: 'Bearer ' + accessToken }});
+  if(!r.ok) throw new Error('다운로드 실패');
+  return await r.text();
+}
+
+/* ============================
+   Helper: pick radio value (already used)
+   ============================ */
+function getRadioSelected(name){
+  const nodes = document.getElementsByName(name);
+  for(const n of nodes) if(n.checked) return n.value;
+  return '';
+}
+
+/* ============================
+   Final notes
+   ============================ */
+</script>
+</body>
+</html>
