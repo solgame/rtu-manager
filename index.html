@@ -80,7 +80,7 @@
             </div>
           </div>
           
-          <h3 class="text-xl font-semibold text-gray-800 border-b pb-2 mb-4">개별 장비 상태 (최근 등록 5건)</h3>
+          <h3 class="text-xl font-semibold text-gray-800 border-b pb-2 mb-4">개별 장비 상태 (최근 활동 5건)</h3>
           <div id="dashboard-latest-list" class="space-y-4">
             <p class="text-gray-500 italic">로딩 중...</p>
           </div>
@@ -559,7 +559,7 @@
     let inspectionList = loadList(STORAGE_KEYS.INSPECTION);
     let repairList = loadList(STORAGE_KEYS.REPAIR);
 
-    // 점검 항목 레이블 (JS에서도 수정된 짧은 레이블 사용)
+    // 점검 항목 레이블
     const INSPECTION_CHECK_LABELS = [
         '필터', '콘텍터', '콘덴싱 코일', '송풍 모터', 
         '증발기 코일', '고압 센서', '저압 센서', '캐패시터'
@@ -591,6 +591,7 @@
     const elements = {
         rtuForm: document.getElementById('rtu-form'),
         inspectionForm: document.getElementById('inspection-form'),
+        repairForm: document.getElementById('repair-form'), // 추가
         imagePreviewContainer: document.getElementById('image-preview-container'),
         detailModal: document.getElementById('detail-modal'),
         tabButtons: document.querySelectorAll('.tab-btn'),
@@ -615,7 +616,7 @@
         reportTotalInspection: document.getElementById('report-total-inspection'),
         reportTotalRepair: document.getElementById('report-total-repair'),
         downloadDataBtn: document.getElementById('download-data-btn'),
-        closeModalBtn: document.getElementById('close-modal-btn') // 추가
+        closeModalBtn: document.getElementById('close-modal-btn') 
     };
 
     let currentModalData = { id: null, type: null }; 
@@ -692,8 +693,7 @@
         });
     }
 
-    // --- 대시보드 데이터 업데이트 ---
-    // (요청 2: 초기화 문제 해결을 위해 DOMContentLoaded 시 호출됨)
+    // --- 대시보드 데이터 업데이트 (이슈 1 FIX 적용됨) ---
     function updateDashboard() {
         const now = new Date();
         const currentMonth = now.getMonth();
@@ -738,6 +738,7 @@
             let color = activity.type.includes('등록') ? 'border-blue-400' : activity.type.includes('수리 (요청)') ? 'border-red-400' : 'border-gray-200';
             let itemType = activity.type.includes('등록') ? 'RTU' : activity.type.includes('점검') ? '점검' : '수리';
 
+            const item = document.createElement('div'); // *** FIX 1: item 변수 선언 추가 ***
             item.className = `flex justify-between items-center bg-gray-50 p-3 rounded-lg border-l-4 ${color} shadow-sm`;
             item.innerHTML = `
                 <div class="min-w-0">
@@ -758,7 +759,7 @@
     }
 
 
-    // --- RTU 목록 렌더링 ---
+    // --- RTU 목록 렌더링 (이슈 2 FIX) ---
     function renderRtuList() {
         elements.rtuList.innerHTML = '';
         elements.rtuCountSpan.textContent = rtuList.length;
@@ -784,13 +785,13 @@
                         <p class="text-sm text-gray-500">${rtu.region || 'N/A'} (${rtu.model || 'N/A'}) - 상태: <span class="font-bold text-${rtu.status === '작동중' ? 'green' : rtu.status === '점검필요' ? 'red' : 'gray'}-600">${rtu.status}</span></p>
                     </div>
                 </div>
-                <button onclick="showDetailModal('${rtu.id}', 'RTU')" class="view-btn bg-gray-200 text-gray-700 font-semibold py-1 px-3 rounded-lg hover:bg-gray-300 transition duration-150">상세보기</button>
+                <button onclick="event.stopPropagation(); showDetailModal('${rtu.id}', 'RTU')" class="view-btn bg-gray-200 text-gray-700 font-semibold py-1 px-3 rounded-lg hover:bg-gray-300 transition duration-150">상세보기</button>
             `;
             elements.rtuList.appendChild(item);
         });
     }
 
-    // --- 점검 목록 렌더링 ---
+    // --- 점검 목록 렌더링 (이슈 3 FIX) ---
     function renderInspectionList() {
         elements.inspectionList.innerHTML = '';
         elements.inspectionCountSpan.textContent = inspectionList.length;
@@ -818,7 +819,7 @@
                     <p class="text-sm text-gray-500">점검자: ${item.inspector} / 과열도: ${item.superheat || 'N/A'}℉</p>
                 </div>
                 <p class="${resultClass} font-semibold text-right">${item.result}</p>
-                <button onclick="showDetailModal('${item.id}', '점검')" class="bg-gray-200 text-gray-700 font-semibold py-1 px-3 rounded-lg hover:bg-gray-300 transition duration-150">상세보기</button>
+                <button onclick="event.stopPropagation(); showDetailModal('${item.id}', '점검')" class="bg-gray-200 text-gray-700 font-semibold py-1 px-3 rounded-lg hover:bg-gray-300 transition duration-150">상세보기</button>
             `;
             elements.inspectionList.appendChild(listItem);
         });
@@ -853,7 +854,7 @@
                     <p class="text-sm text-gray-500">담당자: ${item.engineer} / 문제: ${item.issue.substring(0, 20)}...</p>
                 </div>
                 <span class="text-sm font-semibold py-1 px-3 rounded-full ${statusClass}">${item.status}</span>
-                <button onclick="showDetailModal('${item.id}', '수리')" class="bg-gray-200 text-gray-700 font-semibold py-1 px-3 rounded-lg hover:bg-gray-300 transition duration-150">상세보기</button>
+                <button onclick="event.stopPropagation(); showDetailModal('${item.id}', '수리')" class="bg-gray-200 text-gray-700 font-semibold py-1 px-3 rounded-lg hover:bg-gray-300 transition duration-150">상세보기</button>
             `;
             elements.repairList.appendChild(listItem);
         });
@@ -873,7 +874,7 @@
     // --- 폼 제출 핸들러 ---
     elements.rtuForm.addEventListener('submit', handleRtuSubmit);
     elements.inspectionForm.addEventListener('submit', handleInspectionSubmit);
-    elements.repairForm.addEventListener('submit', handleRepairSubmit);
+    elements.repairForm.addEventListener('submit', handleRepairSubmit); // 이벤트 리스너 확인
 
     async function handleRtuSubmit(e) {
         e.preventDefault();
@@ -970,7 +971,7 @@
         await processDataSaved(elements.inspectionForm, renderInspectionList, STORAGE_KEYS.INSPECTION, inspectionList);
     }
 
-    async function handleRepairSubmit(e) {
+    async function handleRepairSubmit(e) { // 이슈 4 FIX: 코드는 정상이나, 다른 오류로 인해 실행되지 않았음
         e.preventDefault();
         const formData = new FormData(elements.repairForm);
         const data = {
@@ -997,7 +998,7 @@
         alert('정보가 성공적으로 저장되었습니다.');
     }
 
-    // --- 상세보기 모달 ---
+    // --- 상세보기 모달 (이슈 2/3 FIX) ---
     window.showDetailModal = function(id, type) {
         let item, listKey, list;
 
@@ -1085,7 +1086,7 @@
         elements.detailModal.classList.remove('hidden');
     }
     
-    // --- 데이터 다운로드 기능 (요청 3 반영) ---
+    // --- 데이터 다운로드 기능 (이전 요청 기능 유지) ---
 
     function convertToCSV(data, title) {
         if (data.length === 0) return '';
@@ -1163,7 +1164,7 @@
        ============================ */
     
     document.addEventListener('DOMContentLoaded', () => {
-        // --- 초기 데이터 로드 및 렌더링 (요청 2: 대시보드 즉시 업데이트) ---
+        // --- 초기 데이터 로드 및 렌더링 (이슈 1 FIX: 대시보드 즉시 업데이트) ---
         updateDashboard();
         populateRtuSelects();
         
@@ -1174,7 +1175,7 @@
         document.getElementById('repair-manage').classList.add('hidden');
         document.getElementById('report-page').classList.add('hidden');
         
-        // --- 모달 이벤트 리스너 (요청 1 반영: 닫기 버튼 작동) ---
+        // --- 모달 이벤트 리스너 ---
         // 1. 닫기 버튼 작동
         elements.closeModalBtn.addEventListener('click', () => {
             elements.detailModal.classList.add('hidden');
@@ -1183,13 +1184,14 @@
 
         // 2. 모달 외부 클릭 시 닫기
         elements.detailModal.addEventListener('click', (e) => {
-            if (e.target === elements.detailModal) {
+            // modal-bg 클래스가 있는 배경을 클릭했을 때만 닫기
+            if (e.target.classList.contains('modal-bg')) {
                 elements.detailModal.classList.add('hidden');
                 currentModalData = { id: null, type: null };
             }
         });
 
-        // --- 데이터 다운로드 버튼 리스너 (요청 3 반영) ---
+        // --- 데이터 다운로드 버튼 리스너 ---
         elements.downloadDataBtn.addEventListener('click', handleDataDownload);
 
         console.warn("데이터는 브라우저의 localStorage에만 저장되며, 브라우저를 변경하거나 기록을 삭제하면 데이터가 손실될 수 있습니다.");
