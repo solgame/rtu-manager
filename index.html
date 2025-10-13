@@ -636,7 +636,7 @@
             });
             document.getElementById(targetTab).classList.remove('hidden');
 
-            // 탭에 따른 데이터 갱신
+            // 탭에 따른 데이터 갱신 (목록이 렌더링된 상태라도 탭 전환 시 새로고침)
             if (targetTab === 'dashboard') {
                 updateDashboard();
             } else if (targetTab === 'rtu-manage') {
@@ -971,7 +971,7 @@
         await processDataSaved(elements.inspectionForm, renderInspectionList, STORAGE_KEYS.INSPECTION, inspectionList);
     }
 
-    async function handleRepairSubmit(e) { // 이슈 4 FIX: 코드는 정상이나, 다른 오류로 인해 실행되지 않았음
+    async function handleRepairSubmit(e) { // 이벤트 리스너 확인
         e.preventDefault();
         const formData = new FormData(elements.repairForm);
         const data = {
@@ -995,6 +995,17 @@
         renderFunc(); 
         updateDashboard();
         populateRtuSelects(); // 드롭다운 갱신
+        
+        // FIX: 목록 갱신 후 스크롤을 목록 시작 지점으로 이동 (사용자가 목록을 즉시 확인하도록 함)
+        let listElement;
+        if (key === STORAGE_KEYS.RTU) listElement = elements.rtuList;
+        else if (key === STORAGE_KEYS.INSPECTION) listElement = elements.inspectionList;
+        else if (key === STORAGE_KEYS.REPAIR) listElement = elements.repairList;
+
+        if (listElement) {
+            listElement.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+        
         alert('정보가 성공적으로 저장되었습니다.');
     }
 
@@ -1224,6 +1235,11 @@
         // --- 초기 데이터 로드 및 렌더링 (이슈 1 FIX: 대시보드 즉시 업데이트) ---
         updateDashboard();
         populateRtuSelects();
+        
+        // FIX: 로드 시 모든 목록을 미리 렌더링 (숨겨진 상태에서도 데이터를 준비하여 첫 탭 이동/등록 시 오류 방지)
+        renderRtuList(); 
+        renderInspectionList();
+        renderRepairList();
         
         // 초기 탭 설정 (대시보드를 먼저 보여줌)
         document.getElementById('dashboard').classList.remove('hidden');
