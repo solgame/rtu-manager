@@ -89,7 +89,7 @@
         <div id="rtu-manage" class="tab-page hidden">
             
             <form id="rtu-form" class="bg-gray-50 p-4 rounded-lg shadow-inner mb-6 space-y-4">
-                <h2 class="text-xl font-semibold text-gray-800 border-b pb-2 mb-4">RTU 장비 등록</h2>
+                <h2 class="text-xl font-semibold text-gray-800 border-b pb-2 mb-4" id="rtu-form-title">RTU 장비 등록</h2>
                 
                 <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div>
@@ -184,7 +184,7 @@
                 <textarea id="rtu-notes" name="notes" rows="3" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm p-2 border"></textarea>
                 </div>
 
-                <button type="submit" class="w-full bg-green-600 text-white font-bold py-2 px-4 rounded-lg hover:bg-green-700 transition duration-150 shadow-md">RTU 정보 저장</button>
+                <button type="submit" class="w-full bg-green-600 text-white font-bold py-2 px-4 rounded-lg hover:bg-green-700 transition duration-150 shadow-md" id="rtu-submit-button">RTU 정보 저장</button>
             </form>
 
             <h2 class="text-xl font-semibold text-gray-800 border-b pb-2 mb-4">등록된 RTU 목록 (<span id="rtu-count">0</span>건)</h2>
@@ -591,7 +591,7 @@
     const elements = {
         rtuForm: document.getElementById('rtu-form'),
         inspectionForm: document.getElementById('inspection-form'),
-        repairForm: document.getElementById('repair-form'), // 추가
+        repairForm: document.getElementById('repair-form'), 
         imagePreviewContainer: document.getElementById('image-preview-container'),
         detailModal: document.getElementById('detail-modal'),
         tabButtons: document.querySelectorAll('.tab-btn'),
@@ -616,10 +616,14 @@
         reportTotalInspection: document.getElementById('report-total-inspection'),
         reportTotalRepair: document.getElementById('report-total-repair'),
         downloadDataBtn: document.getElementById('download-data-btn'),
-        closeModalBtn: document.getElementById('close-modal-btn') 
+        closeModalBtn: document.getElementById('close-modal-btn'),
+        // New elements for RTU management
+        rtuFormTitle: document.getElementById('rtu-form-title'), // ⭐ 새 ID 사용
+        rtuSubmitButton: document.getElementById('rtu-submit-button') // ⭐ 새 ID 사용
     };
 
     let currentModalData = { id: null, type: null }; 
+    let editingRtuId = null; // ⭐ 현재 수정 중인 RTU ID
 
     // --- 탭 전환 로직 ---
     elements.tabButtons.forEach(button => {
@@ -640,9 +644,11 @@
             if (targetTab === 'dashboard') {
                 updateDashboard();
             } else if (targetTab === 'rtu-manage') {
+                // RTU 탭으로 이동 시 등록 모드로 초기화
+                resetRtuForm(); 
                 renderRtuList();
             } else if (targetTab === 'inspection-manage') {
-                populateRtuSelects(); // RTU 목록 드롭다운 채우기
+                populateRtuSelects(); 
                 renderInspectionList();
             } else if (targetTab === 'repair-manage') {
                 populateRtuSelects(); 
@@ -671,11 +677,11 @@
         const allHidden = !document.getElementById('rtu-image-1').files.length && 
                           !document.getElementById('rtu-image-2').files.length && 
                           !document.getElementById('rtu-image-3').files.length;
-        if (allHidden) elements.imagePreviewContainer.classList.add('hidden');
+        if (allHidden && !document.getElementById('image-preview-1').src.includes('data:')) elements.imagePreviewContainer.classList.add('hidden');
         else elements.imagePreviewContainer.classList.remove('hidden');
     }
 
-    window.previewImage = previewImage; // HTML에서 접근 가능하도록 전역 설정
+    window.previewImage = previewImage; 
 
     // --- RTU 선택 드롭다운 채우기 ---
     function populateRtuSelects() {
@@ -693,7 +699,7 @@
         });
     }
 
-    // --- 대시보드 데이터 업데이트 (이슈 1 FIX 적용됨) ---
+    // --- 대시보드 데이터 업데이트 ---
     function updateDashboard() {
         const now = new Date();
         const currentMonth = now.getMonth();
@@ -719,9 +725,9 @@
 
         // 4. 최신 활동 목록
         const allActivities = [
-            ...rtuList.map(item => ({ date: new Date(item.timestamp), name: item.name, type: '장비 등록', id: item.id })),
-            ...inspectionList.map(item => ({ date: new Date(item.timestamp), name: rtuList.find(r => r.id === item.rtuId)?.name || '알 수 없는 RTU', type: `점검 (${item.result})`, id: item.id })),
-            ...repairList.map(item => ({ date: new Date(item.timestamp), name: rtuList.find(r => r.id === item.rtuId)?.name || '알 수 없는 RTU', type: `수리 (${item.status})`, id: item.id }))
+            ...rtuList.map(item => ({ date: new Date(item.timestamp), name: item.name, type: '장비 등록', id: item.id, itemType: 'RTU' })),
+            ...inspectionList.map(item => ({ date: new Date(item.timestamp), name: rtuList.find(r => r.id === item.rtuId)?.name || '알 수 없는 RTU', type: `점검 (${item.result})`, id: item.id, itemType: '점검' })),
+            ...repairList.map(item => ({ date: new Date(item.timestamp), name: rtuList.find(r => r.id === item.rtuId)?.name || '알 수 없는 RTU', type: `수리 (${item.status})`, id: item.id, itemType: '수리' }))
         ];
 
         const sortedActivities = allActivities.sort((a, b) => b.date.getTime() - a.date.getTime());
@@ -736,16 +742,15 @@
         latest5.forEach(activity => {
             const dateString = activity.date.toLocaleDateString('ko-KR');
             let color = activity.type.includes('등록') ? 'border-blue-400' : activity.type.includes('수리 (요청)') ? 'border-red-400' : 'border-gray-200';
-            let itemType = activity.type.includes('등록') ? 'RTU' : activity.type.includes('점검') ? '점검' : '수리';
-
-            const item = document.createElement('div'); // *** FIX 1: item 변수 선언 추가 ***
+            
+            const item = document.createElement('div');
             item.className = `flex justify-between items-center bg-gray-50 p-3 rounded-lg border-l-4 ${color} shadow-sm`;
             item.innerHTML = `
                 <div class="min-w-0">
                     <p class="font-semibold truncate">${activity.type}</p>
                     <p class="text-xs text-gray-500">${activity.name} | ${dateString}</p>
                 </div>
-                <button onclick="showDetailModal('${activity.id}', '${itemType}')" class="bg-gray-200 text-gray-700 text-sm py-1 px-3 rounded-md hover:bg-gray-300 transition duration-150">상세</button>
+                <button onclick="showDetailModal('${activity.id}', '${activity.itemType}')" class="bg-gray-200 text-gray-700 text-sm py-1 px-3 rounded-md hover:bg-gray-300 transition duration-150">상세</button>
             `;
             elements.dashboardLatestList.appendChild(item);
         });
@@ -759,12 +764,73 @@
     }
 
 
-    // --- RTU 목록 렌더링 (이슈 2 FIX) ---
+    // ⭐ RTU 폼 초기화 및 모드 변경 함수
+    function resetRtuForm() {
+        elements.rtuForm.reset();
+        elements.rtuFormTitle.textContent = 'RTU 장비 등록';
+        elements.rtuSubmitButton.textContent = 'RTU 정보 저장';
+        editingRtuId = null; 
+        document.getElementById('rtu-name').disabled = false; // 등록번호 수정 가능
+        
+        // 이미지 미리보기 초기화
+        for (let i = 1; i <= 3; i++) {
+            const previewEl = document.getElementById(`image-preview-${i}`);
+            previewEl.src = '';
+            const fileInput = document.getElementById(`rtu-image-${i}`);
+            // 파일 입력 값 초기화 (새로 등록/수정 시 파일 다시 선택하도록)
+            fileInput.value = null; 
+        }
+        elements.imagePreviewContainer.classList.add('hidden');
+    }
+    
+    // ⭐ RTU 수정 모드로 전환
+    window.editRtu = function(rtuId) {
+        const rtu = rtuList.find(r => r.id === rtuId);
+        if (!rtu) return;
+
+        // 폼 초기화 및 수정 모드 설정
+        resetRtuForm();
+        editingRtuId = rtuId;
+        elements.rtuFormTitle.textContent = `RTU 정보 수정: ${rtu.name}`;
+        elements.rtuSubmitButton.textContent = 'RTU 정보 수정 완료';
+        document.getElementById('rtu-name').disabled = true; // 등록번호는 수정 불가
+
+        // 데이터 폼에 채우기
+        const formElements = elements.rtuForm.elements;
+        // 텍스트/숫자/날짜/셀렉트 필드 채우기
+        for (const key in rtu) {
+            const input = formElements.namedItem(key);
+            if (input) {
+                input.value = rtu[key] || '';
+            }
+        }
+        
+        // 이미지 미리보기 채우기 (Base64 데이터가 있으면 로드)
+        const imageKeys = ['image1', 'image2', 'image3'];
+        let hasImage = false;
+        imageKeys.forEach((key, index) => {
+            const previewEl = document.getElementById(`image-preview-${index + 1}`);
+            if (rtu[key]) {
+                previewEl.src = rtu[key];
+                hasImage = true;
+            } else {
+                previewEl.src = '';
+            }
+        });
+
+        if (hasImage) elements.imagePreviewContainer.classList.remove('hidden');
+        else elements.imagePreviewContainer.classList.add('hidden');
+
+        // 스크롤을 폼으로 이동
+        window.scrollTo({ top: elements.rtuForm.offsetTop - 20, behavior: 'smooth' });
+    }
+
+    // --- RTU 목록 렌더링 (수정 버튼 추가) ---
     function renderRtuList() {
         elements.rtuList.innerHTML = '';
         elements.rtuCountSpan.textContent = rtuList.length;
         if (rtuList.length === 0) {
-            elements.rtuList.innerHTML = '<p class="text-gray-500 italic">등록된 RTU 정보가 없습니다.</p>';
+            elements.rtuList.innerHTML = '<p class="text-gray-500 italic">등록된 RTU 정보가 없습니다. 상단에서 새로 등록할 수 있습니다.</p>';
             return;
         }
         
@@ -785,13 +851,16 @@
                         <p class="text-sm text-gray-500">${rtu.region || 'N/A'} (${rtu.model || 'N/A'}) - 상태: <span class="font-bold text-${rtu.status === '작동중' ? 'green' : rtu.status === '점검필요' ? 'red' : 'gray'}-600">${rtu.status}</span></p>
                     </div>
                 </div>
-                <button onclick="event.stopPropagation(); showDetailModal('${rtu.id}', 'RTU')" class="view-btn bg-gray-200 text-gray-700 font-semibold py-1 px-3 rounded-lg hover:bg-gray-300 transition duration-150">상세보기</button>
+                <div class="flex space-x-2">
+                    <button onclick="event.stopPropagation(); editRtu('${rtu.id}')" class="bg-blue-500 text-white font-semibold py-1 px-3 rounded-lg hover:bg-blue-600 transition duration-150">수정</button>
+                    <button onclick="event.stopPropagation(); showDetailModal('${rtu.id}', 'RTU')" class="view-btn bg-gray-200 text-gray-700 font-semibold py-1 px-3 rounded-lg hover:bg-gray-300 transition duration-150">상세</button>
+                </div>
             `;
             elements.rtuList.appendChild(item);
         });
     }
 
-    // --- 점검 목록 렌더링 (이슈 3 FIX) ---
+    // --- 점검 목록 렌더링 ---
     function renderInspectionList() {
         elements.inspectionList.innerHTML = '';
         elements.inspectionCountSpan.textContent = inspectionList.length;
@@ -874,13 +943,13 @@
     // --- 폼 제출 핸들러 ---
     elements.rtuForm.addEventListener('submit', handleRtuSubmit);
     elements.inspectionForm.addEventListener('submit', handleInspectionSubmit);
-    elements.repairForm.addEventListener('submit', handleRepairSubmit); // 이벤트 리스너 확인
+    elements.repairForm.addEventListener('submit', handleRepairSubmit); 
 
     async function handleRtuSubmit(e) {
         e.preventDefault();
         const formData = new FormData(elements.rtuForm);
-        const rtuData = {
-            id: Date.now().toString(),
+        
+        let rtuData = {
             name: formData.get('name'),
             region: formData.get('region'),
             model: formData.get('model'),
@@ -893,36 +962,67 @@
             pressureHighLimit: formData.get('pressureHighLimit'),
             pressureLowLimit: formData.get('pressureLowLimit'),
             notes: formData.get('notes'),
-            timestamp: new Date().toLocaleString('ko-KR')
         };
-        
+
         const fileInputs = [document.getElementById('rtu-image-1'), document.getElementById('rtu-image-2'), document.getElementById('rtu-image-3')];
         let imagesToLoad = [];
+        let isImageChanged = false; // 이미지 파일이 새로 선택되었는지 여부 (Base64 변환이 필요함을 의미)
 
-        fileInputs.forEach((input, index) => {
+        // 이미지 처리
+        for (let i = 0; i < fileInputs.length; i++) {
+            const input = fileInputs[i];
+            const key = `image${i + 1}`;
+            
+            // 1. 파일이 새로 선택된 경우 (수정/등록 공통)
             if (input.files.length > 0) {
+                isImageChanged = true;
                 imagesToLoad.push(new Promise(resolve => {
                     const reader = new FileReader();
                     reader.onload = (event) => {
-                        rtuData[`image${index + 1}`] = event.target.result;
+                        rtuData[key] = event.target.result;
                         resolve();
                     };
                     reader.readAsDataURL(input.files[0]);
                 }));
-            } else {
-                rtuData[`image${index + 1}`] = null;
+            } 
+            // 2. 수정 모드이고 파일 입력이 비어 있는 경우: 기존 데이터 유지
+            else if (editingRtuId) {
+                const existingRtu = rtuList.find(r => r.id === editingRtuId);
+                // 기존 데이터에 해당 이미지가 있다면 그대로 사용
+                if (existingRtu && existingRtu[key]) {
+                    rtuData[key] = existingRtu[key]; 
+                } else {
+                    rtuData[key] = null;
+                }
+            } 
+            // 3. 등록 모드이고 파일 입력이 비어 있는 경우: null
+            else {
+                rtuData[key] = null;
             }
-        });
+        }
 
         await Promise.all(imagesToLoad);
+        
+        // ⭐ 수정 로직
+        if (editingRtuId) {
+            const index = rtuList.findIndex(r => r.id === editingRtuId);
+            if (index !== -1) {
+                // 기존 데이터에 새 데이터 덮어쓰기 (timestamp는 최초 등록 시간 유지)
+                rtuList[index] = { ...rtuList[index], ...rtuData };
+                alert('RTU 정보가 성공적으로 수정되었습니다.');
+            }
+        } 
+        // ⭐ 등록 로직
+        else {
+            rtuData.id = Date.now().toString();
+            rtuData.timestamp = new Date().toLocaleString('ko-KR');
+            rtuList.push(rtuData);
+        }
 
-        rtuList.push(rtuData);
         await processDataSaved(elements.rtuForm, renderRtuList, STORAGE_KEYS.RTU, rtuList);
         
-        // 미리보기 초기화
-        document.getElementById('image-preview-1').src = '';
-        document.getElementById('image-preview-2').src = '';
-        document.getElementById('image-preview-3').src = '';
+        // 폼 초기화 및 등록 모드로 전환
+        resetRtuForm();
     }
 
     async function handleInspectionSubmit(e) {
@@ -934,14 +1034,14 @@
             inspectionDate: formData.get('inspectionDate'),
             inspector: formData.get('inspector'),
             // Component Check (1-8)
-            check1: getRadioSelected('check1'), // 필터
-            check2: getRadioSelected('check2'), // 콘텍터
-            check3: getRadioSelected('check3'), // 콘덴싱 코일
-            check4: getRadioSelected('check4'), // 송풍 모터
-            check5: getRadioSelected('check5'), // 증발기 코일
-            check6: getRadioSelected('check6'), // 고압 센서
-            check7: getRadioSelected('check7'), // 저압 센서
-            check8: getRadioSelected('check8'), // 캐패시터
+            check1: getRadioSelected('check1'), 
+            check2: getRadioSelected('check2'), 
+            check3: getRadioSelected('check3'), 
+            check4: getRadioSelected('check4'), 
+            check5: getRadioSelected('check5'), 
+            check6: getRadioSelected('check6'), 
+            check7: getRadioSelected('check7'), 
+            check8: getRadioSelected('check8'), 
             // Comp 1
             comp1Hp: formData.get('comp1Hp'),
             comp1Lp: formData.get('comp1Lp'),
@@ -971,7 +1071,7 @@
         await processDataSaved(elements.inspectionForm, renderInspectionList, STORAGE_KEYS.INSPECTION, inspectionList);
     }
 
-    async function handleRepairSubmit(e) { // 이슈 4 FIX: 코드는 정상이나, 다른 오류로 인해 실행되지 않았음
+    async function handleRepairSubmit(e) { 
         e.preventDefault();
         const formData = new FormData(elements.repairForm);
         const data = {
@@ -998,7 +1098,7 @@
         alert('정보가 성공적으로 저장되었습니다.');
     }
 
-    // --- 상세보기 모달 (이슈 2/3 FIX) ---
+    // --- 상세보기 모달 ---
     window.showDetailModal = function(id, type) {
         let item, listKey, list;
 
@@ -1086,8 +1186,7 @@
         elements.detailModal.classList.remove('hidden');
     }
     
-    // --- 데이터 다운로드 기능 (이전 요청 기능 유지) ---
-
+    // --- 데이터 다운로드 기능 ---
     function convertToCSV(data, title) {
         if (data.length === 0) return '';
 
@@ -1164,7 +1263,7 @@
        ============================ */
     
     document.addEventListener('DOMContentLoaded', () => {
-        // --- 초기 데이터 로드 및 렌더링 (이슈 1 FIX: 대시보드 즉시 업데이트) ---
+        // --- 초기 데이터 로드 및 렌더링 ---
         updateDashboard();
         populateRtuSelects();
         
