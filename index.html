@@ -86,7 +86,9 @@
           </div>
         </div>
 
-        <div id="rtu-manage" class="tab-page hidden mb-40"> <div class="flex space-x-2 mb-4">
+        <div id="rtu-manage" class="tab-page hidden mb-40"> 
+            
+            <div class="flex space-x-2 mb-4">
                 <button id="mode-new-btn" class="py-2 px-4 rounded-lg font-semibold bg-blue-600 text-white shadow-md transition duration-150" onclick="switchRtuMode('new')">
                     신규 등록
                 </button>
@@ -642,39 +644,6 @@
     };
 
     let currentModalData = { id: null, type: null };
-
-    // --- 탭 전환 로직 ---
-    elements.tabButtons.forEach(button => {
-        button.addEventListener('click', () => {
-            const targetTab = button.dataset.tab;
-
-            // 버튼 스타일 변경
-            elements.tabButtons.forEach(btn => btn.classList.remove('tab-active', 'border-blue-500'));
-            button.classList.add('tab-active', 'border-blue-500');
-
-            // 페이지 컨텐츠 전환
-            document.querySelectorAll('.tab-page').forEach(page => {
-                page.classList.add('hidden');
-            });
-            document.getElementById(targetTab).classList.remove('hidden');
-
-            // 탭에 따른 데이터 갱신
-            if (targetTab === 'dashboard') {
-                updateDashboard();
-            } else if (targetTab === 'rtu-manage') {
-                switchRtuMode(rtuMode); // 모드 상태 유지하면서 UI 갱신 (목록 포함)
-                renderRtuList();
-            } else if (targetTab === 'inspection-manage') {
-                populateRtuSelects();
-                renderInspectionList();
-            } else if (targetTab === 'repair-manage') {
-                populateRtuSelects();
-                renderRepairList();
-            } else if (targetTab === 'report-page') {
-                updateReportPage();
-            }
-        });
-    });
 
     // --- RTU 모드 전환 함수 (핵심 개선) ---
     window.switchRtuMode = function(mode, targetRtuId = null) {
@@ -1506,6 +1475,39 @@
     
     document.addEventListener('DOMContentLoaded', () => {
         
+        // --- 탭 전환 로직 (DOMContentLoaded 안으로 이동) ---
+        elements.tabButtons.forEach(button => {
+            button.addEventListener('click', () => {
+                const targetTab = button.dataset.tab;
+
+                // 버튼 스타일 변경
+                elements.tabButtons.forEach(btn => btn.classList.remove('tab-active', 'border-blue-500'));
+                button.classList.add('tab-active', 'border-blue-500');
+
+                // 페이지 컨텐츠 전환
+                document.querySelectorAll('.tab-page').forEach(page => {
+                    page.classList.add('hidden');
+                });
+                document.getElementById(targetTab).classList.remove('hidden');
+
+                // 탭에 따른 데이터 갱신
+                if (targetTab === 'dashboard') {
+                    updateDashboard();
+                } else if (targetTab === 'rtu-manage') {
+                    switchRtuMode(rtuMode); // 모드 상태 유지하면서 UI 갱신 (목록 포함)
+                    renderRtuList();
+                } else if (targetTab === 'inspection-manage') {
+                    populateRtuSelects();
+                    renderInspectionList();
+                } else if (targetTab === 'repair-manage') {
+                    populateRtuSelects();
+                    renderRepairList();
+                } else if (targetTab === 'report-page') {
+                    updateReportPage();
+                }
+            });
+        });
+        
         updateDashboard();
         populateRtuSelects();
         
@@ -1523,8 +1525,8 @@
         document.getElementById('report-page').classList.add('hidden');
         
         // --- 모달 이벤트 리스너 ---
-        elements.closeModalBtn.addEventListener('click', (e) => { // 수정: (e) 추가
-            e.stopPropagation(); // 수정: 이벤트 버블링 방지
+        elements.closeModalBtn.addEventListener('click', (e) => { 
+            e.stopPropagation(); // 이벤트 버블링 방지
             elements.detailModal.classList.add('hidden');
             currentModalData = { id: null, type: null };
         });
