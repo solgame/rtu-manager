@@ -17,545 +17,453 @@
 <body class="min-h-screen">
   <div class="max-w-6xl mx-auto p-4 sm:p-8">
     <div class="bg-white rounded-2xl shadow-xl p-6">
-      <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-4 border-b pb-4">
-        <div>
-          <h1 class="text-3xl font-bold text-gray-900">RTU 통합 관리 시스템</h1>
-          <p class="text-sm text-gray-500">데이터는 **브라우저에 로컬로 저장**됩니다.</p>
-        </div>
-        <span id="user-display" class="font-semibold text-gray-700">로컬 사용자</span>
-      </div>
-
-      <div class="flex border-b border-gray-200 mb-6 overflow-x-auto whitespace-nowrap">
-        <button data-tab="dashboard" class="tab-btn py-2 px-4 text-gray-600 border-b-2 border-transparent hover:border-blue-300 transition duration-150 tab-active border-blue-500">
-          대시보드 (Dashboard)
-        </button>
-        <button data-tab="rtu-manage" class="tab-btn py-2 px-4 text-gray-600 border-b-2 border-transparent hover:border-blue-300 transition duration-150">
-          장비 등록/관리
-        </button>
-        <button data-tab="inspection-manage" class="tab-btn py-2 px-4 text-gray-600 border-b-2 border-transparent hover:border-blue-300 transition duration-150">
-          점검 등록/관리
-        </button>
-        <button data-tab="repair-manage" class="tab-btn py-2 px-4 text-gray-600 border-b-2 border-transparent hover:border-blue-300 transition duration-150">
-          수리 등록/관리
-        </button>
-        <button data-tab="report-page" class="tab-btn py-2 px-4 text-gray-600 border-b-2 border-transparent hover:border-blue-300 transition duration-150">
-          보고서 (Report)
+      <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center border-b pb-4 mb-4">
+        <h1 class="text-3xl font-extrabold text-gray-900 flex items-center">
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8 text-blue-600 mr-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.526.34 1.144.354 1.63.153z"/>
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+          </svg>
+          RTU 통합 관리 시스템
+        </h1>
+        <button id="download-data-btn" class="mt-4 sm:mt-0 bg-gray-200 text-gray-700 font-semibold py-2 px-4 rounded-full hover:bg-gray-300 transition duration-150 text-sm">
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 inline-block mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/>
+          </svg>
+          데이터 CSV 다운로드
         </button>
       </div>
 
-      <div id="tab-content">
+      <div class="border-b border-gray-200">
+        <nav class="-mb-px flex space-x-8" aria-label="Tabs">
+          <button class="tab-btn tab-active border-b-2 border-blue-500 py-3 px-1 text-sm font-medium text-blue-600 transition duration-150" data-tab="dashboard">대시보드</button>
+          <button class="tab-btn border-b-2 border-transparent py-3 px-1 text-sm font-medium text-gray-500 hover:text-gray-700 hover:border-gray-300 transition duration-150" data-tab="rtu-manage">RTU 등록/관리</button>
+          <button class="tab-btn border-b-2 border-transparent py-3 px-1 text-sm font-medium text-gray-500 hover:text-gray-700 hover:border-gray-300 transition duration-150" data-tab="inspection-manage">점검 기록</button>
+          <button class="tab-btn border-b-2 border-transparent py-3 px-1 text-sm font-medium text-gray-500 hover:text-gray-700 hover:border-gray-300 transition duration-150" data-tab="repair-manage">수리 기록</button>
+          <button class="tab-btn border-b-2 border-transparent py-3 px-1 text-sm font-medium text-gray-500 hover:text-gray-700 hover:border-gray-300 transition duration-150" data-tab="report-page">보고서</button>
+        </nav>
+      </div>
+
+      <div class="mt-6">
         
         <div id="dashboard" class="tab-page">
-          <h2 class="text-2xl font-semibold text-gray-800 mb-4">장비 상태 및 처리 현황 요약</h2>
+          <h2 class="text-2xl font-bold text-gray-800 mb-4">현재 시스템 상태 요약</h2>
           
-          <h3 class="text-xl font-medium text-gray-700 mb-3">장비 상태 요약</h3>
-          <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
-            <div class="bg-blue-100 text-blue-800 p-4 rounded-xl shadow-md">
-              <p class="text-sm">등록된 장비 수</p>
-              <p id="dashboard-total" class="text-2xl font-bold mt-1">0</p>
+          <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+            <div class="bg-blue-50 p-5 rounded-xl shadow-lg border border-blue-200">
+              <p class="text-sm font-medium text-blue-600">총 등록 장비 수</p>
+              <p id="dashboard-total" class="text-3xl font-extrabold text-blue-900 mt-1">0</p>
             </div>
-            <div class="bg-green-100 text-green-800 p-4 rounded-xl shadow-md">
-              <p class="text-sm">작동 중 (Running)</p>
-              <p id="dashboard-running" class="text-2xl font-bold mt-1">0</p>
+            <div class="bg-green-50 p-5 rounded-xl shadow-lg border border-green-200">
+              <p class="text-sm font-medium text-green-600">작동중</p>
+              <p id="dashboard-running" class="text-3xl font-extrabold text-green-900 mt-1">0</p>
             </div>
-            <div class="bg-gray-100 text-gray-800 p-4 rounded-xl shadow-md">
-              <p class="text-sm">정지됨 (Stopped)</p>
-              <p id="dashboard-stopped" class="text-2xl font-bold mt-1">0</p>
+            <div class="bg-gray-50 p-5 rounded-xl shadow-lg border border-gray-200">
+              <p class="text-sm font-medium text-gray-600">정지됨</p>
+              <p id="dashboard-stopped" class="text-3xl font-extrabold text-gray-900 mt-1">0</p>
             </div>
-            <div class="bg-red-100 text-red-800 p-4 rounded-xl shadow-md">
-              <p class="text-sm">점검 필요 (Needs Insp.)</p>
-              <p id="dashboard-needs-inspection" class="text-2xl font-bold mt-1">0</p>
+            <div class="bg-red-50 p-5 rounded-xl shadow-lg border border-red-200">
+              <p class="text-sm font-medium text-red-600">점검 필요</p>
+              <p id="dashboard-needs-inspection" class="text-3xl font-extrabold text-red-900 mt-1">0</p>
             </div>
           </div>
 
-          <h3 class="text-xl font-medium text-gray-700 mb-3 border-t pt-4">처리 현황</h3>
-          <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
-            <div class="bg-yellow-100 text-yellow-800 p-4 rounded-xl shadow-md">
-              <p class="text-sm">이번 달 점검 건수</p>
-              <p id="dashboard-monthly-inspection" class="text-2xl font-bold mt-1">0</p>
+          <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            
+            <div class="lg:col-span-1 bg-white p-6 rounded-xl shadow-lg border">
+              <h3 class="text-xl font-semibold text-gray-800 mb-4 border-b pb-2">최근 처리 현황</h3>
+              <div class="space-y-3">
+                <div class="flex justify-between items-center text-gray-700">
+                  <span class="font-medium">이번 달 점검 건수</span>
+                  <span id="dashboard-monthly-inspection" class="text-xl font-bold text-blue-600">0</span>
+                </div>
+                <div class="flex justify-between items-center text-gray-700">
+                  <span class="font-medium">미처리 수리 요청</span>
+                  <span id="dashboard-pending-repair" class="text-xl font-bold text-red-600">0</span>
+                </div>
+              </div>
             </div>
-            <div class="bg-purple-100 text-purple-800 p-4 rounded-xl shadow-md">
-              <p class="text-sm">미처리 수리 요청</p>
-              <p id="dashboard-pending-repair" class="text-2xl font-bold mt-1">0</p>
+
+            <div class="lg:col-span-2 bg-white p-6 rounded-xl shadow-lg border">
+              <h3 class="text-xl font-semibold text-gray-800 mb-4 border-b pb-2">개별 장비 상태 (최근 등록/수정)</h3>
+              <div id="dashboard-latest-list" class="space-y-3">
+                <p class="text-gray-500">로딩 중...</p>
+              </div>
             </div>
-          </div>
-          
-          <h3 class="text-xl font-semibold text-gray-800 border-b pb-2 mb-4">개별 장비 상태 (최근 활동 5건)</h3>
-          <div id="dashboard-latest-list" class="space-y-4">
-            <p class="text-gray-500 italic">로딩 중...</p>
           </div>
         </div>
 
-        <div id="rtu-manage" class="tab-page hidden mb-40"> 
+        <div id="rtu-manage" class="tab-page hidden">
+          <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
             
-            <div class="flex space-x-2 mb-4">
-                <button id="mode-new-btn" class="py-2 px-4 rounded-lg font-semibold bg-blue-600 text-white shadow-md transition duration-150" onclick="switchRtuMode('new')">
-                    신규 등록
-                </button>
-                <button id="mode-modify-btn" class="py-2 px-4 rounded-lg font-semibold bg-gray-200 text-gray-700 shadow-md transition duration-150" onclick="switchRtuMode('modify')">
-                    장비 수정
-                </button>
-            </div>
-
-            <form id="rtu-form" class="bg-gray-50 p-4 rounded-lg shadow-inner mb-6 space-y-4">
-                <h2 id="rtu-form-title" class="text-xl font-semibold text-gray-800 border-b pb-2 mb-4">RTU 장비 신규 등록</h2>
-                
-                <input type="hidden" id="rtu-id-for-modification" name="rtuId" value=""> 
-
-                <div id="rtu-id-container">
-                    <div>
-                        <label for="rtu-name" class="block text-sm font-medium text-gray-700">RTU 등록번호/ID *</label>
-                        <input type="text" id="rtu-name" name="name" required class="mt-1 block w-full border-gray-300 rounded-md shadow-sm p-2 border focus:ring-blue-500">
-                    </div>
+            <div class="lg:col-span-1 bg-white p-6 rounded-xl shadow-lg border h-fit">
+                <div class="flex justify-center mb-4 border-b pb-4">
+                    <button id="mode-new-btn" onclick="switchRtuMode('new')" class="px-4 py-2 text-sm font-semibold rounded-l-lg bg-blue-600 text-white transition duration-150">신규 등록</button>
+                    <button id="mode-modify-btn" onclick="switchRtuMode('modify')" class="px-4 py-2 text-sm font-semibold rounded-r-lg bg-gray-200 text-gray-700 transition duration-150">정보 수정</button>
                 </div>
 
-                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <div>
-                        <label for="rtu-region" class="block text-sm font-medium text-gray-700">설치 장소/지역</label>
-                        <input type="text" id="rtu-region" name="region" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm p-2 border">
-                    </div>
-                </div>
+                <h2 id="rtu-form-title" class="text-xl font-bold text-gray-800 mb-4">RTU 장비 신규 등록</h2>
+                <form id="rtu-form" class="space-y-4">
+                    <input type="hidden" id="rtu-id-for-modification" name="rtuId" value=""> 
 
-                <div class="grid grid-cols-2 sm:grid-cols-4 gap-4">
+                    <div id="rtu-id-container">
+                        <div>
+                            <label for="rtu-name" class="block text-sm font-medium text-gray-700">RTU 등록번호/ID *</label>
+                            <input type="text" id="rtu-name" name="name" required class="mt-1 block w-full border-gray-300 rounded-md shadow-sm p-2 border focus:ring-blue-500">
+                        </div>
+                    </div>
+
+                    <div>
+                        <label for="rtu-region" class="block text-sm font-medium text-gray-700">설치 장소/지역 *</label>
+                        <input type="text" id="rtu-region" name="region" required class="mt-1 block w-full border-gray-300 rounded-md shadow-sm p-2 border focus:ring-blue-500">
+                    </div>
                     <div>
                         <label for="rtu-model" class="block text-sm font-medium text-gray-700">모델명</label>
-                        <input type="text" id="rtu-model" name="model" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm p-2 border">
+                        <input type="text" id="rtu-model" name="model" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm p-2 border focus:ring-blue-500">
                     </div>
                     <div>
-                        <label for="rtu-capacity" class="block text-sm font-medium text-gray-700">용량</label>
-                        <input type="text" id="rtu-capacity" name="capacity" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm p-2 border">
+                        <label for="rtu-capacity" class="block text-sm font-medium text-gray-700">용량 (냉동톤/kW)</label>
+                        <input type="text" id="rtu-capacity" name="capacity" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm p-2 border focus:ring-blue-500">
                     </div>
                     <div>
-                        <label for="rtu-unit-type" class="block text-sm font-medium text-gray-700">유닛 유형</label>
-                        <input type="text" id="rtu-unit-type" name="unitType" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm p-2 border">
-                    </div>
-                    <div>
-                        <label for="rtu-refrigerant" class="block text-sm font-medium text-gray-700">냉매 종류</label>
-                        <input type="text" id="rtu-refrigerant" name="refrigerant" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm p-2 border">
-                    </div>
-                </div>
-
-                <div class="grid grid-cols-2 sm:grid-cols-3 gap-4">
-                    <div>
-                        <label for="rtu-status" class="block text-sm font-medium text-gray-700">현재 상태 *</label>
-                        <select id="rtu-status" name="status" required class="mt-1 block w-full border-gray-300 rounded-md shadow-sm p-2 border">
-                            <option value="작동중">작동 중 (Running)</option>
-                            <option value="정지됨">정지됨 (Stopped)</option>
-                            <option value="점검필요">점검 필요 (Needs Inspection)</option>
-                        </select>
-                    </div>
-                    <div>
-                        <label for="rtu-electric-phase" class="block text-sm font-medium text-gray-700">전기 종류</label>
-                        <select id="rtu-electric-phase" name="electricPhase" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm p-2 border">
-                            <option value="단상">단상 (Single Phase)</option>
-                            <option value="삼상">삼상 (Three Phase)</option>
+                        <label for="rtu-unit-type" class="block text-sm font-medium text-gray-700">유닛 종류</label>
+                        <select id="rtu-unit-type" name="unitType" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm p-2 border focus:ring-blue-500">
+                            <option value="패키지">패키지</option>
+                            <option value="칠러">칠러</option>
+                            <option value="냉각탑">냉각탑</option>
                             <option value="기타">기타</option>
                         </select>
                     </div>
-                    <div>
-                        <label for="rtu-date" class="block text-sm font-medium text-gray-700">설치 날짜</label>
-                        <input type="date" id="rtu-date" name="date" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm p-2 border">
+                     <div>
+                        <label for="rtu-refrigerant" class="block text-sm font-medium text-gray-700">냉매 종류</label>
+                        <input type="text" id="rtu-refrigerant" name="refrigerant" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm p-2 border focus:ring-blue-500" value="R-410A">
                     </div>
-                </div>
+                    <div>
+                        <label for="rtu-electric-phase" class="block text-sm font-medium text-gray-700">전기 종류</label>
+                        <select id="rtu-electric-phase" name="electricPhase" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm p-2 border focus:ring-blue-500">
+                            <option value="단상">단상 (Single Phase)</option>
+                            <option value="삼상">삼상 (Three Phase)</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label for="rtu-date" class="block text-sm font-medium text-gray-700">설치(등록) 날짜</label>
+                        <input type="date" id="rtu-date" name="date" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm p-2 border focus:ring-blue-500" value="${new Date().toISOString().split('T')[0]}">
+                    </div>
+                    <div>
+                        <label for="rtu-status" class="block text-sm font-medium text-gray-700">현재 상태 *</label>
+                        <select id="rtu-status" name="status" required class="mt-1 block w-full border-gray-300 rounded-md shadow-sm p-2 border focus:ring-blue-500">
+                            <option value="작동중">작동중</option>
+                            <option value="정지됨">정지됨</option>
+                            <option value="점검필요">점검필요</option>
+                        </select>
+                    </div>
+                    
+                    <div class="grid grid-cols-2 gap-4">
+                        <div>
+                            <label for="rtu-pressure-high" class="block text-sm font-medium text-gray-700">고압 상한 설정 (PSI)</label>
+                            <input type="number" id="rtu-pressure-high" name="pressureHighLimit" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm p-2 border focus:ring-blue-500">
+                        </div>
+                        <div>
+                            <label for="rtu-pressure-low" class="block text-sm font-medium text-gray-700">저압 하한 설정 (PSI)</label>
+                            <input type="number" id="rtu-pressure-low" name="pressureLowLimit" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm p-2 border focus:ring-blue-500">
+                        </div>
+                    </div>
+                    
+                    <div>
+                        <label for="rtu-notes" class="block text-sm font-medium text-gray-700">특이사항 및 메모</label>
+                        <textarea id="rtu-notes" name="notes" rows="3" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm p-2 border focus:ring-blue-500"></textarea>
+                    </div>
 
-                <h3 class="text-base font-semibold text-gray-700 border-t pt-4 mt-4">압력 상/하한 설정 (PSI)</h3>
-                <div class="grid grid-cols-2 gap-4">
-                    <div>
-                        <label for="rtu-pressure-high" class="block text-sm font-medium text-gray-700">고압 상한 (PSI)</label>
-                        <input type="number" id="rtu-pressure-high" name="pressureHighLimit" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm p-2 border" step="0.1">
+                    <div class="space-y-3">
+                        <label class="block text-sm font-medium text-gray-700">장비 사진 (최대 3장)</label>
+                        <div class="flex space-x-2">
+                            <input type="file" id="rtu-image1" name="image1" accept="image/*" onchange="previewImage(event, 1)" class="hidden-file">
+                            <label for="rtu-image1" class="cursor-pointer bg-blue-500 text-white text-sm font-semibold py-2 px-4 rounded-lg hover:bg-blue-600 transition duration-150">사진 1 업로드</label>
+                        </div>
+                        <div class="flex space-x-2">
+                            <input type="file" id="rtu-image2" name="image2" accept="image/*" onchange="previewImage(event, 2)" class="hidden-file">
+                            <label for="rtu-image2" class="cursor-pointer bg-blue-500 text-white text-sm font-semibold py-2 px-4 rounded-lg hover:bg-blue-600 transition duration-150">사진 2 업로드</label>
+                        </div>
+                        <div class="flex space-x-2">
+                            <input type="file" id="rtu-image3" name="image3" accept="image/*" onchange="previewImage(event, 3)" class="hidden-file">
+                            <label for="rtu-image3" class="cursor-pointer bg-blue-500 text-white text-sm font-semibold py-2 px-4 rounded-lg hover:bg-blue-600 transition duration-150">사진 3 업로드</label>
+                        </div>
                     </div>
-                    <div>
-                        <label for="rtu-pressure-low" class="block text-sm font-medium text-gray-700">저압 하한 (PSI)</label>
-                        <input type="number" id="rtu-pressure-low" name="pressureLowLimit" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm p-2 border" step="0.1">
-                    </div>
-                </div>
 
-                <h3 class="text-base font-semibold text-gray-700 border-t pt-4 mt-4">장비 사진 등록 (최대 3장)</h3>
-                <div class="grid grid-cols-3 gap-4">
-                    <div>
-                        <input type="file" id="rtu-image-1" name="image1" accept="image/*" class="hidden-file" onchange="previewImage(event, 1)">
-                        <button type="button" onclick="document.getElementById('rtu-image-1').click()" class="w-full bg-white border border-gray-300 rounded-md shadow-sm p-2 text-gray-700 hover:bg-gray-100">사진 1 선택</button>
+                    <div id="image-preview-container" class="mt-4 hidden space-y-4 p-4 border rounded-lg bg-gray-50">
+                        <h4 class="text-sm font-medium text-gray-700">이미지 미리보기</h4>
+                        <div class="flex flex-wrap gap-4">
+                            <img id="image-preview-1" src="" alt="Image 1 Preview" class="thumb" style="display:none;">
+                            <img id="image-preview-2" src="" alt="Image 2 Preview" class="thumb" style="display:none;">
+                            <img id="image-preview-3" src="" alt="Image 3 Preview" class="thumb" style="display:none;">
+                        </div>
                     </div>
-                    <div>
-                        <input type="file" id="rtu-image-2" name="image2" accept="image/*" class="hidden-file" onchange="previewImage(event, 2)">
-                        <button type="button" onclick="document.getElementById('rtu-image-2').click()" class="w-full bg-white border border-gray-300 rounded-md shadow-sm p-2 text-gray-700 hover:bg-gray-100">사진 2 선택</button>
-                    </div>
-                    <div>
-                        <input type="file" id="rtu-image-3" name="image3" accept="image/*" class="hidden-file" onchange="previewImage(event, 3)">
-                        <button type="button" onclick="document.getElementById('rtu-image-3').click()" class="w-full bg-white border border-gray-300 rounded-md shadow-sm p-2 text-gray-700 hover:bg-gray-100">사진 3 선택</button>
-                    </div>
-                </div>
-                
-                <div id="image-preview-container" class="mt-2 hidden flex gap-4">
-                    <p class="text-sm font-medium text-gray-700 mb-1">미리보기:</p>
-                    <img id="image-preview-1" class="max-h-24 rounded-lg border border-gray-200" alt="사진 1 미리보기"/>
-                    <img id="image-preview-2" class="max-h-24 rounded-lg border border-gray-200" alt="사진 2 미리보기"/>
-                    <img id="image-preview-3" class="max-h-24 rounded-lg border border-gray-200" alt="사진 3 미리보기"/>
-                </div>
 
-                <div class="mt-4">
-                <label for="rtu-notes" class="block text-sm font-medium text-gray-700">기타 메모 (특이사항)</label>
-                <textarea id="rtu-notes" name="notes" rows="3" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm p-2 border"></textarea>
-                </div>
 
-                <button type="submit" id="rtu-submit-btn" class="w-full bg-green-600 text-white font-bold py-2 px-4 rounded-lg hover:bg-green-700 transition duration-150 shadow-md">RTU 정보 저장</button>
-            </form>
+                    <button id="rtu-submit-btn" type="submit" class="w-full bg-blue-600 text-white font-semibold py-3 rounded-lg hover:bg-blue-700 transition duration-150 mt-6">RTU 정보 저장</button>
+                </form>
+            </div>
 
-            <h2 class="text-xl font-semibold text-gray-800 border-b pb-2 mb-4">등록된 RTU 목록 (<span id="rtu-count">0</span>건)</h2>
-            <div id="rtu-list" class="space-y-4">
-                </div>
-            
+            <div class="lg:col-span-2">
+              <h2 class="text-2xl font-bold text-gray-800 mb-4">RTU 등록 목록 (<span id="rtu-count">0</span>건)</h2>
+              <div id="rtu-list" class="space-y-4">
+                <p class="text-gray-500 italic">등록된 RTU 장비가 없습니다.</p>
+              </div>
+            </div>
+          </div>
         </div>
 
         <div id="inspection-manage" class="tab-page hidden">
-            <form id="inspection-form" class="bg-gray-50 p-4 rounded-lg shadow-inner mb-6 space-y-4">
-                <h2 class="text-xl font-semibold text-gray-800 border-b pb-2 mb-4">RTU 성능 점검 등록</h2>
+          <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            
+            <div class="lg:col-span-1 bg-white p-6 rounded-xl shadow-lg border h-fit">
+              <h2 class="text-xl font-bold text-gray-800 mb-4 border-b pb-2">점검 기록 등록</h2>
+              <form id="inspection-form" class="space-y-4">
+                
                 <div>
-                    <label for="inspection-rtu-id" class="block text-sm font-medium text-gray-700">대상 RTU *</label>
-                    <select id="inspection-rtu-id" name="rtuId" required class="mt-1 block w-full border-gray-300 rounded-md shadow-sm p-2 border focus:ring-blue-500">
-                        <option value="">-- RTU를 선택하세요 --</option>
-                    </select>
+                  <label for="inspection-rtu-id" class="block text-sm font-medium text-gray-700">대상 RTU *</label>
+                  <select id="inspection-rtu-id" name="rtuId" required class="mt-1 block w-full border-gray-300 rounded-md shadow-sm p-2 border focus:ring-blue-500">
+                    <option value="">-- RTU를 선택하세요 --</option>
+                  </select>
                 </div>
-                <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                    <div>
-                        <label for="inspection-date" class="block text-sm font-medium text-gray-700">점검 날짜 *</label>
-                        <input type="date" id="inspection-date" name="inspectionDate" required class="mt-1 block w-full border-gray-300 rounded-md shadow-sm p-2 border">
-                    </div>
-                    <div class="sm:col-span-2">
-                        <label for="inspection-inspector" class="block text-sm font-medium text-gray-700">점검자 이름 *</label>
-                        <input type="text" id="inspection-inspector" name="inspector" required class="mt-1 block w-full border-gray-300 rounded-md shadow-sm p-2 border">
+                <div>
+                  <label for="inspection-date" class="block text-sm font-medium text-gray-700">점검 날짜 *</label>
+                  <input type="date" id="inspection-date" name="inspectionDate" required class="mt-1 block w-full border-gray-300 rounded-md shadow-sm p-2 border focus:ring-blue-500" value="${new Date().toISOString().split('T')[0]}">
+                </div>
+                <div>
+                  <label for="inspection-inspector" class="block text-sm font-medium text-gray-700">점검자 이름 *</label>
+                  <input type="text" id="inspection-inspector" name="inspector" required class="mt-1 block w-full border-gray-300 rounded-md shadow-sm p-2 border focus:ring-blue-500">
+                </div>
+
+                <div class="border p-4 rounded-lg bg-indigo-50 space-y-3">
+                    <h3 class="text-lg font-semibold text-indigo-800">부품 점검 상태</h3>
+                    <div class="grid grid-cols-2 gap-x-4 gap-y-2 text-sm">
+                        <div>
+                            <label for="check1" class="block font-medium text-gray-700">1. 필터</label>
+                            <select id="check1" name="check1" class="mt-1 w-full border-gray-300 rounded-md p-1 border">
+                                <option value="정상">정상</option>
+                                <option value="교체필요">교체필요</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label for="check2" class="block font-medium text-gray-700">2. 콘텍터</label>
+                            <select id="check2" name="check2" class="mt-1 w-full border-gray-300 rounded-md p-1 border">
+                                <option value="정상">정상</option>
+                                <option value="소손/교체필요">소손/교체필요</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label for="check3" class="block font-medium text-gray-700">3. 콘덴싱 코일</label>
+                            <select id="check3" name="check3" class="mt-1 w-full border-gray-300 rounded-md p-1 border">
+                                <option value="양호">양호</option>
+                                <option value="오염/청소필요">오염/청소필요</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label for="check4" class="block font-medium text-gray-700">4. 송풍 모터</label>
+                            <select id="check4" name="check4" class="mt-1 w-full border-gray-300 rounded-md p-1 border">
+                                <option value="정상">정상</option>
+                                <option value="소음/수리필요">소음/수리필요</option>
+                            </select>
+                        </div>
+                         <div>
+                            <label for="check5" class="block font-medium text-gray-700">5. 증발기 코일</label>
+                            <select id="check5" name="check5" class="mt-1 w-full border-gray-300 rounded-md p-1 border">
+                                <option value="양호">양호</option>
+                                <option value="오염/청소필요">오염/청소필요</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label for="check6" class="block font-medium text-gray-700">6. 고압 센서</label>
+                            <select id="check6" name="check6" class="mt-1 w-full border-gray-300 rounded-md p-1 border">
+                                <option value="정상">정상</option>
+                                <option value="오류">오류</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label for="check7" class="block font-medium text-gray-700">7. 저압 센서</label>
+                            <select id="check7" name="check7" class="mt-1 w-full border-gray-300 rounded-md p-1 border">
+                                <option value="정상">정상</option>
+                                <option value="오류">오류</option>
+                            </select>
+                        </div>
+                         <div>
+                            <label for="check8" class="block font-medium text-gray-700">8. 캐패시터</label>
+                            <select id="check8" name="check8" class="mt-1 w-full border-gray-300 rounded-md p-1 border">
+                                <option value="정상">정상</option>
+                                <option value="불량">불량</option>
+                            </select>
+                        </div>
                     </div>
                 </div>
                 
-                <h3 class="text-base font-semibold text-gray-700 border-t pt-4 mt-4">부품 체크 (양호 / 불량 / 재점검 요망)</h3>
-                <div class="space-y-1 p-3 border rounded-lg bg-white">
-                    
-                    <div class="grid grid-cols-2 gap-2 sm:gap-4 items-center border-b last:border-b-0 py-1">
-                        <label class="text-sm font-medium text-gray-700">필터</label>
-                        <div class="flex space-x-2 sm:space-x-4 justify-end">
-                            
-                                <label class="inline-flex items-center text-xs sm:text-sm whitespace-nowrap">
-                                    <input type="radio" name="check1" value="양호" class="form-radio text-blue-600">
-                                    <span class="ml-1">양호</span>
-                                </label>
-                            
-                                <label class="inline-flex items-center text-xs sm:text-sm whitespace-nowrap">
-                                    <input type="radio" name="check1" value="불량" class="form-radio text-blue-600">
-                                    <span class="ml-1">불량</span>
-                                </label>
-                            
-                                <label class="inline-flex items-center text-xs sm:text-sm whitespace-nowrap">
-                                    <input type="radio" name="check1" value="재점검 요망" class="form-radio text-blue-600">
-                                    <span class="ml-1">재점검 요망</span>
-                                </label>
-                            
+                <div class="border p-4 rounded-lg bg-yellow-50 space-y-3">
+                    <h3 class="text-lg font-semibold text-yellow-800">운전 상태 측정 (Comp 1)</h3>
+                    <div class="grid grid-cols-3 gap-3">
+                        <div>
+                            <label for="comp1-hp" class="block text-sm font-medium text-gray-700">고압 (PSI)</label>
+                            <input type="number" step="0.1" id="comp1-hp" name="comp1Hp" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm p-2 border">
                         </div>
-                    </div>
-
-                    
-                    <div class="grid grid-cols-2 gap-2 sm:gap-4 items-center border-b last:border-b-0 py-1">
-                        <label class="text-sm font-medium text-gray-700">콘텍터</label>
-                        <div class="flex space-x-2 sm:space-x-4 justify-end">
-                            
-                                <label class="inline-flex items-center text-xs sm:text-sm whitespace-nowrap">
-                                    <input type="radio" name="check2" value="양호" class="form-radio text-blue-600">
-                                    <span class="ml-1">양호</span>
-                                </label>
-                            
-                                <label class="inline-flex items-center text-xs sm:text-sm whitespace-nowrap">
-                                    <input type="radio" name="check2" value="불량" class="form-radio text-blue-600">
-                                    <span class="ml-1">불량</span>
-                                </label>
-                            
-                                <label class="inline-flex items-center text-xs sm:text-sm whitespace-nowrap">
-                                    <input type="radio" name="check2" value="재점검 요망" class="form-radio text-blue-600">
-                                    <span class="ml-1">재점검 요망</span>
-                                </label>
-                            
+                        <div>
+                            <label for="comp1-lp" class="block text-sm font-medium text-gray-700">저압 (PSI)</label>
+                            <input type="number" step="0.1" id="comp1-lp" name="comp1Lp" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm p-2 border">
                         </div>
-                    </div>
-
-                    
-                    <div class="grid grid-cols-2 gap-2 sm:gap-4 items-center border-b last:border-b-0 py-1">
-                        <label class="text-sm font-medium text-gray-700">콘덴싱 코일</label>
-                        <div class="flex space-x-2 sm:space-x-4 justify-end">
-                            
-                                <label class="inline-flex items-center text-xs sm:text-sm whitespace-nowrap">
-                                    <input type="radio" name="check3" value="양호" class="form-radio text-blue-600">
-                                    <span class="ml-1">양호</span>
-                                </label>
-                            
-                                <label class="inline-flex items-center text-xs sm:text-sm whitespace-nowrap">
-                                    <input type="radio" name="check3" value="불량" class="form-radio text-blue-600">
-                                    <span class="ml-1">불량</span>
-                                </label>
-                            
-                                <label class="inline-flex items-center text-xs sm:text-sm whitespace-nowrap">
-                                    <input type="radio" name="check3" value="재점검 요망" class="form-radio text-blue-600">
-                                    <span class="ml-1">재점검 요망</span>
-                                </label>
-                            
+                        <div>
+                            <label for="comp1-amp" class="block text-sm font-medium text-gray-700">암페어 (A)</label>
+                            <input type="number" step="0.1" id="comp1-amp" name="comp1Amp" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm p-2 border">
                         </div>
-                    </div>
-
-                    
-                    <div class="grid grid-cols-2 gap-2 sm:gap-4 items-center border-b last:border-b-0 py-1">
-                        <label class="text-sm font-medium text-gray-700">송풍 모터</label>
-                        <div class="flex space-x-2 sm:space-x-4 justify-end">
-                            
-                                <label class="inline-flex items-center text-xs sm:text-sm whitespace-nowrap">
-                                    <input type="radio" name="check4" value="양호" class="form-radio text-blue-600">
-                                    <span class="ml-1">양호</span>
-                                </label>
-                            
-                                <label class="inline-flex items-center text-xs sm:text-sm whitespace-nowrap">
-                                    <input type="radio" name="check4" value="불량" class="form-radio text-blue-600">
-                                    <span class="ml-1">불량</span>
-                                </label>
-                            
-                                <label class="inline-flex items-center text-xs sm:text-sm whitespace-nowrap">
-                                    <input type="radio" name="check4" value="재점검 요망" class="form-radio text-blue-600">
-                                    <span class="ml-1">재점검 요망</span>
-                                </label>
-                            
-                        </div>
-                    </div>
-
-                    
-                    <div class="grid grid-cols-2 gap-2 sm:gap-4 items-center border-b last:border-b-0 py-1">
-                        <label class="text-sm font-medium text-gray-700">증발기 코일</label>
-                        <div class="flex space-x-2 sm:space-x-4 justify-end">
-                            
-                                <label class="inline-flex items-center text-xs sm:text-sm whitespace-nowrap">
-                                    <input type="radio" name="check5" value="양호" class="form-radio text-blue-600">
-                                    <span class="ml-1">양호</span>
-                                </label>
-                            
-                                <label class="inline-flex items-center text-xs sm:text-sm whitespace-nowrap">
-                                    <input type="radio" name="check5" value="불량" class="form-radio text-blue-600">
-                                    <span class="ml-1">불량</span>
-                                </label>
-                            
-                                <label class="inline-flex items-center text-xs sm:text-sm whitespace-nowrap">
-                                    <input type="radio" name="check5" value="재점검 요망" class="form-radio text-blue-600">
-                                    <span class="ml-1">재점검 요망</span>
-                                </label>
-                            
-                        </div>
-                    </div>
-
-                    
-                    <div class="grid grid-cols-2 gap-2 sm:gap-4 items-center border-b last:border-b-0 py-1">
-                        <label class="text-sm font-medium text-gray-700">고압 센서</label>
-                        <div class="flex space-x-2 sm:space-x-4 justify-end">
-                            
-                                <label class="inline-flex items-center text-xs sm:text-sm whitespace-nowrap">
-                                    <input type="radio" name="check6" value="양호" class="form-radio text-blue-600">
-                                    <span class="ml-1">양호</span>
-                                </label>
-                            
-                                <label class="inline-flex items-center text-xs sm:text-sm whitespace-nowrap">
-                                    <input type="radio" name="check6" value="불량" class="form-radio text-blue-600">
-                                    <span class="ml-1">불량</span>
-                                </label>
-                            
-                                <label class="inline-flex items-center text-xs sm:text-sm whitespace-nowrap">
-                                    <input type="radio" name="check6" value="재점검 요망" class="form-radio text-blue-600">
-                                    <span class="ml-1">재점검 요망</span>
-                                </label>
-                            
-                        </div>
-                    </div>
-
-                    
-                    <div class="grid grid-cols-2 gap-2 sm:gap-4 items-center border-b last:border-b-0 py-1">
-                        <label class="text-sm font-medium text-gray-700">저압 센서</label>
-                        <div class="flex space-x-2 sm:space-x-4 justify-end">
-                            
-                                <label class="inline-flex items-center text-xs sm:text-sm whitespace-nowrap">
-                                    <input type="radio" name="check7" value="양호" class="form-radio text-blue-600">
-                                    <span class="ml-1">양호</span>
-                                </label>
-                            
-                                <label class="inline-flex items-center text-xs sm:text-sm whitespace-nowrap">
-                                    <input type="radio" name="check7" value="불량" class="form-radio text-blue-600">
-                                    <span class="ml-1">불량</span>
-                                </label>
-                            
-                                <label class="inline-flex items-center text-xs sm:text-sm whitespace-nowrap">
-                                    <input type="radio" name="check7" value="재점검 요망" class="form-radio text-blue-600">
-                                    <span class="ml-1">재점검 요망</span>
-                                </label>
-                            
-                        </div>
-                    </div>
-
-                    
-                    <div class="grid grid-cols-2 gap-2 sm:gap-4 items-center border-b last:border-b-0 py-1">
-                        <label class="text-sm font-medium text-gray-700">캐패시터</label>
-                        <div class="flex space-x-2 sm:space-x-4 justify-end">
-                            
-                                <label class="inline-flex items-center text-xs sm:text-sm whitespace-nowrap">
-                                    <input type="radio" name="check8" value="양호" class="form-radio text-blue-600">
-                                    <span class="ml-1">양호</span>
-                                </label>
-                            
-                                <label class="inline-flex items-center text-xs sm:text-sm whitespace-nowrap">
-                                    <input type="radio" name="check8" value="불량" class="form-radio text-blue-600">
-                                    <span class="ml-1">불량</span>
-                                </label>
-                            
-                                <label class="inline-flex items-center text-xs sm:text-sm whitespace-nowrap">
-                                    <input type="radio" name="check8" value="재점검 요망" class="form-radio text-blue-600">
-                                    <span class="ml-1">재점검 요망</span>
-                                </label>
-                            
-                        </div>
-                    </div>
-
-                </div>
-
-                <h3 class="text-base font-semibold text-gray-700 border-t pt-4 mt-4">컴프레서 1 측정값 (PSI, ℉, Amps)</h3>
-                <div class="grid grid-cols-3 gap-4">
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700">고압값 (HP, PSI)</label>
-                        <input type="number" name="comp1Hp" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm p-2 border" step="0.1">
-                    </div>
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700">저압값 (LP, PSI)</label>
-                        <input type="number" name="comp1Lp" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm p-2 border" step="0.1">
-                    </div>
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700">암페어 (Amps)</label>
-                        <input type="number" name="comp1Amp" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm p-2 border" step="0.1">
                     </div>
                 </div>
 
-                <h3 class="text-base font-semibold text-gray-700 border-t pt-4 mt-4">컴프레서 2 측정값 (선택 사항)</h3>
-                <div class="grid grid-cols-3 gap-4">
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700">고압값 (HP, PSI)</label>
-                        <input type="number" name="comp2Hp" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm p-2 border" step="0.1">
-                    </div>
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700">저압값 (LP, PSI)</label>
-                        <input type="number" name="comp2Lp" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm p-2 border" step="0.1">
-                    </div>
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700">암페어 (Amps)</label>
-                        <input type="number" name="comp2Amp" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm p-2 border" step="0.1">
-                    </div>
-                </div>
-
-                <h3 class="text-base font-semibold text-gray-700 border-t pt-4 mt-4">온도 측정 (℉)</h3>
-                <div class="grid grid-cols-3 gap-4">
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700">과열도 (Superheat, ℉)</label>
-                        <input type="number" name="superheat" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm p-2 border" step="0.1">
-                    </div>
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700">과냉도 (Subcool, ℉)</label>
-                        <input type="number" name="subcool" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm p-2 border" step="0.1">
-                    </div>
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700">증발 온도 (Evaporation, ℉)</label>
-                        <input type="number" name="evapTemp" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm p-2 border" step="0.1">
+                <div class="border p-4 rounded-lg bg-yellow-50 space-y-3">
+                    <h3 class="text-lg font-semibold text-yellow-800">운전 상태 측정 (Comp 2 - 선택 사항)</h3>
+                    <div class="grid grid-cols-3 gap-3">
+                        <div>
+                            <label for="comp2-hp" class="block text-sm font-medium text-gray-700">고압 (PSI)</label>
+                            <input type="number" step="0.1" id="comp2-hp" name="comp2Hp" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm p-2 border">
+                        </div>
+                        <div>
+                            <label for="comp2-lp" class="block text-sm font-medium text-gray-700">저압 (PSI)</label>
+                            <input type="number" step="0.1" id="comp2-lp" name="comp2Lp" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm p-2 border">
+                        </div>
+                        <div>
+                            <label for="comp2-amp" class="block text-sm font-medium text-gray-700">암페어 (A)</label>
+                            <input type="number" step="0.1" id="comp2-amp" name="comp2Amp" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm p-2 border">
+                        </div>
                     </div>
                 </div>
-
+                
+                <div class="border p-4 rounded-lg bg-red-50 space-y-3">
+                    <h3 class="text-lg font-semibold text-red-800">온도 측정</h3>
+                    <div class="grid grid-cols-3 gap-3">
+                        <div>
+                            <label for="superheat" class="block text-sm font-medium text-gray-700">과열도 (℉)</label>
+                            <input type="number" step="0.1" id="superheat" name="superheat" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm p-2 border">
+                        </div>
+                        <div>
+                            <label for="subcool" class="block text-sm font-medium text-gray-700">과냉도 (℉)</label>
+                            <input type="number" step="0.1" id="subcool" name="subcool" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm p-2 border">
+                        </div>
+                         <div>
+                            <label for="evap-temp" class="block text-sm font-medium text-gray-700">증발 온도 (℉)</label>
+                            <input type="number" step="0.1" id="evap-temp" name="evapTemp" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm p-2 border">
+                        </div>
+                    </div>
+                </div>
+                
                 <div>
-                    <label for="inspection-result" class="block text-sm font-medium text-gray-700">최종 점검 결과</label>
-                    <select id="inspection-result" name="result" required class="mt-1 block w-full border-gray-300 rounded-md shadow-sm p-2 border">
-                        <option value="정상">정상</option>
-                        <option value="주의">주의</option>
-                        <option value="수리 필요">수리 필요</option>
-                    </select>
+                  <label for="inspection-result" class="block text-sm font-medium text-gray-700">최종 점검 결과 *</label>
+                  <select id="inspection-result" name="result" required class="mt-1 block w-full border-gray-300 rounded-md shadow-sm p-2 border focus:ring-blue-500">
+                      <option value="정상">정상</option>
+                      <option value="주의">주의</option>
+                      <option value="점검필요">점검필요</option>
+                  </select>
                 </div>
+                
                 <div>
-                    <label for="inspection-notes" class="block text-sm font-medium text-gray-700">상세 특이사항</label>
-                    <textarea id="inspection-notes" name="notes" rows="3" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm p-2 border"></textarea>
+                  <label for="inspection-notes" class="block text-sm font-medium text-gray-700">특이사항 및 조치 내용</label>
+                  <textarea id="inspection-notes" name="notes" rows="3" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm p-2 border focus:ring-blue-500"></textarea>
                 </div>
 
-                <button type="submit" class="w-full bg-blue-600 text-white font-bold py-2 px-4 rounded-lg hover:bg-blue-700 transition duration-150 shadow-md">점검 정보 저장</button>
-            </form>
 
-            <h2 class="text-xl font-semibold text-gray-800 border-b pb-2 mb-4">등록된 점검 목록 (<span id="inspection-count">0</span>건)</h2>
-            <div id="inspection-list" class="space-y-4">
-                </div>
+                <button type="submit" class="w-full bg-blue-600 text-white font-semibold py-3 rounded-lg hover:bg-blue-700 transition duration-150 mt-6">점검 기록 저장</button>
+              </form>
+            </div>
+
+            <div class="lg:col-span-2">
+              <h2 class="text-2xl font-bold text-gray-800 mb-4">점검 기록 목록 (<span id="inspection-count">0</span>건)</h2>
+              <div id="inspection-list" class="space-y-4">
+                <p class="text-gray-500 italic">등록된 점검 기록이 없습니다.</p>
+              </div>
+            </div>
+          </div>
         </div>
-
+        
         <div id="repair-manage" class="tab-page hidden">
-            <form id="repair-form" class="bg-gray-50 p-4 rounded-lg shadow-inner mb-6 space-y-4">
-                <h2 class="text-xl font-semibold text-gray-800 border-b pb-2 mb-4">RTU 수리 등록</h2>
+           <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            
+            <div class="lg:col-span-1 bg-white p-6 rounded-xl shadow-lg border h-fit">
+              <h2 class="text-xl font-bold text-gray-800 mb-4 border-b pb-2">수리 기록 등록</h2>
+              <form id="repair-form" class="space-y-4">
+                
                 <div>
-                    <label for="repair-rtu-id" class="block text-sm font-medium text-gray-700">대상 RTU *</label>
-                    <select id="repair-rtu-id" name="rtuId" required class="mt-1 block w-full border-gray-300 rounded-md shadow-sm p-2 border focus:ring-blue-500">
-                        <option value="">-- RTU를 선택하세요 --</option>
-                    </select>
-                </div>
-                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <div>
-                        <label for="repair-date" class="block text-sm font-medium text-gray-700">수리 요청/완료 날짜 *</label>
-                        <input type="date" id="repair-date" name="repairDate" required class="mt-1 block w-full border-gray-300 rounded-md shadow-sm p-2 border">
-                    </div>
-                    <div>
-                        <label for="repair-engineer" class="block text-sm font-medium text-gray-700">수리 담당자 *</label>
-                        <input type="text" id="repair-engineer" name="engineer" required class="mt-1 block w-full border-gray-300 rounded-md shadow-sm p-2 border">
-                    </div>
+                  <label for="repair-rtu-id" class="block text-sm font-medium text-gray-700">대상 RTU *</label>
+                  <select id="repair-rtu-id" name="rtuId" required class="mt-1 block w-full border-gray-300 rounded-md shadow-sm p-2 border focus:ring-blue-500">
+                    <option value="">-- RTU를 선택하세요 --</option>
+                  </select>
                 </div>
                 <div>
-                    <label for="repair-issue" class="block text-sm font-medium text-gray-700">발생 문제 및 조치 내용 *</label>
-                    <textarea id="repair-issue" name="issue" rows="2" required class="mt-1 block w-full border-gray-300 rounded-md shadow-sm p-2 border"></textarea>
+                  <label for="repair-date" class="block text-sm font-medium text-gray-700">수리 요청/완료 날짜 *</label>
+                  <input type="date" id="repair-date" name="repairDate" required class="mt-1 block w-full border-gray-300 rounded-md shadow-sm p-2 border focus:ring-blue-500" value="${new Date().toISOString().split('T')[0]}">
                 </div>
                 <div>
-                    <label for="repair-status" class="block text-sm font-medium text-gray-700">처리 상태 *</label>
-                    <select id="repair-status" name="status" required class="mt-1 block w-full border-gray-300 rounded-md shadow-sm p-2 border">
-                        <option value="요청">요청 (미처리)</option>
-                        <option value="진행중">진행 중</option>
-                        <option value="완료">완료</option>
-                    </select>
+                  <label for="repair-engineer" class="block text-sm font-medium text-gray-700">수리 담당자 *</label>
+                  <input type="text" id="repair-engineer" name="engineer" required class="mt-1 block w-full border-gray-300 rounded-md shadow-sm p-2 border focus:ring-blue-500">
+                </div>
+                <div>
+                  <label for="repair-status" class="block text-sm font-medium text-gray-700">처리 상태 *</label>
+                  <select id="repair-status" name="status" required class="mt-1 block w-full border-gray-300 rounded-md shadow-sm p-2 border focus:ring-blue-500">
+                      <option value="요청">요청 (미처리)</option>
+                      <option value="진행중">진행중</option>
+                      <option value="완료">완료</option>
+                  </select>
+                </div>
+                
+                <div>
+                  <label for="repair-issue" class="block text-sm font-medium text-gray-700">문제 및 조치 내용 *</label>
+                  <textarea id="repair-issue" name="issue" rows="5" required class="mt-1 block w-full border-gray-300 rounded-md shadow-sm p-2 border focus:ring-blue-500"></textarea>
                 </div>
 
-                <button type="submit" class="w-full bg-purple-600 text-white font-bold py-2 px-4 rounded-lg hover:bg-purple-700 transition duration-150 shadow-md">수리 정보 저장</button>
-            </form>
 
-            <h2 class="text-xl font-semibold text-gray-800 border-b pb-2 mb-4">등록된 수리 목록 (<span id="repair-count">0</span>건)</h2>
-            <div id="repair-list" class="space-y-4">
-                </div>
+                <button type="submit" class="w-full bg-blue-600 text-white font-semibold py-3 rounded-lg hover:bg-blue-700 transition duration-150 mt-6">수리 기록 저장</button>
+              </form>
+            </div>
+
+            <div class="lg:col-span-2">
+              <h2 class="text-2xl font-bold text-gray-800 mb-4">수리 기록 목록 (<span id="repair-count">0</span>건)</h2>
+              <div id="repair-list" class="space-y-4">
+                <p class="text-gray-500 italic">등록된 수리 기록이 없습니다.</p>
+              </div>
+            </div>
+          </div>
         </div>
 
         <div id="report-page" class="tab-page hidden">
-            <h2 class="text-2xl font-semibold text-gray-800 mb-4">보고서 생성 및 통계</h2>
-            <div class="bg-gray-100 p-6 rounded-lg text-gray-600">
-                <p class="mb-3">이 페이지는 현재 저장된 장비, 점검, 수리 데이터를 기반으로 월별/연도별 현황 및 분석 보고서를 출력하는 기능을 구현할 수 있습니다.</p>
-                <h3 class="font-bold mt-4">데이터 현황</h3>
-                <ul class="list-disc list-inside ml-4">
-                    <li>총 등록 장비: <span id="report-total-rtu" class="font-semibold">0</span>대</li>
-                    <li>총 점검 기록: <span id="report-total-inspection" class="font-semibold">0</span>건</li>
-                    <li>총 수리 기록: <span id="report-total-repair" class="font-semibold">0</span>건</li>
-                </ul>
+            <h2 class="text-2xl font-bold text-gray-800 mb-4">시스템 운영 보고서</h2>
+
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+                <div class="bg-indigo-50 p-6 rounded-xl shadow-lg border border-indigo-200">
+                    <p class="text-sm font-medium text-indigo-600">총 등록 RTU</p>
+                    <p id="report-total-rtu" class="text-3xl font-extrabold text-indigo-900 mt-1">0</p>
+                </div>
+                <div class="bg-pink-50 p-6 rounded-xl shadow-lg border border-pink-200">
+                    <p class="text-sm font-medium text-pink-600">총 점검 기록 건수</p>
+                    <p id="report-total-inspection" class="text-3xl font-extrabold text-pink-900 mt-1">0</p>
+                </div>
+                <div class="bg-teal-50 p-6 rounded-xl shadow-lg border border-teal-200">
+                    <p class="text-sm font-medium text-teal-600">총 수리 기록 건수</p>
+                    <p id="report-total-repair" class="text-3xl font-extrabold text-teal-900 mt-1">0</p>
+                </div>
             </div>
             
-            <h3 class="font-bold text-xl text-gray-800 mt-6 border-t pt-4">데이터 다운로드 (CSV)</h3>
-            <p class="text-sm text-gray-600 mb-3">저장된 RTU, 점검, 수리 데이터를 엑셀 등에서 열어볼 수 있도록 CSV 파일로 다운로드합니다. (사진 파일 제외)</p>
-            <button id="download-data-btn" class="bg-indigo-600 text-white font-bold py-2 px-4 rounded-lg hover:bg-indigo-700 transition duration-150 shadow-md w-full">
-                RTU, 점검, 수리 데이터 CSV로 다운로드
-            </button>
+            <p class="text-gray-600 border-t pt-4">보다 상세한 데이터 분석 및 보고는 상단의 **데이터 CSV 다운로드** 버튼을 통해 데이터를 추출하여 진행하실 수 있습니다.</p>
         </div>
 
       </div>
-      
+
     </div>
   </div>
 
-  <div id="detail-modal" class="modal-bg fixed inset-0 z-50 flex items-center justify-center p-4 hidden">
-    <div class="bg-white rounded-xl p-6 max-w-lg w-full shadow-2xl overflow-y-auto max-h-[90vh]">
-      <h3 id="modal-title" class="text-2xl font-bold mb-4 border-b pb-2">상세 정보</h3>
-      <div id="modal-content" class="space-y-3 text-gray-700">
+  <div id="detail-modal" class="modal-bg hidden fixed inset-0 z-50 flex items-center justify-center p-4">
+    <div class="bg-white rounded-xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto p-6 relative">
+        <h3 id="modal-title" class="text-xl font-bold text-gray-800 mb-4 border-b pb-2">상세 정보</h3>
+        <div id="modal-content" class="text-gray-700 space-y-2 text-sm">
+            <p>로딩 중...</p>
         </div>
-      <div class="mt-6 flex justify-end">
-        <button id="close-modal-btn" class="bg-gray-300 text-gray-800 font-semibold py-2 px-4 rounded-lg hover:bg-gray-400 transition duration-150">닫기</button>
-      </div>
+        <button id="close-modal-btn" class="absolute top-4 right-4 text-gray-400 hover:text-gray-600 transition">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+            </svg>
+        </button>
     </div>
   </div>
 
@@ -576,7 +484,7 @@
     // 장비 등록 모드 상태 관리
     let rtuMode = 'new'; // 'new' 또는 'modify'
     let currentRtuIdForModification = null; // 수정 중인 RTU의 ID
-
+    
     // 점검 항목 레이블
     const INSPECTION_CHECK_LABELS = [
         '필터', '콘텍터', '콘덴싱 코일', '송풍 모터', '증발기 코일', '고압 센서', '저압 센서', '캐패시터'
@@ -589,7 +497,7 @@
         } catch (e) {
             console.error(`로컬 저장소 (${key}) 로드 실패`, e);
             // 데이터 로드에 실패하더라도 빈 배열을 반환하여 스크립트가 멈추지 않도록 보장
-            return []; 
+            return [];
         }
     }
 
@@ -605,7 +513,6 @@
     /* ============================
        UI 요소 및 이벤트 핸들러 초기화
        ============================ */
-
     const elements = {
         rtuForm: document.getElementById('rtu-form'),
         inspectionForm: document.getElementById('inspection-form'),
@@ -621,6 +528,7 @@
         rtuCountSpan: document.getElementById('rtu-count'),
         inspectionCountSpan: document.getElementById('inspection-count'),
         repairCountSpan: document.getElementById('repair-count'),
+
         // Dashboard Elements
         dashboardTotal: document.getElementById('dashboard-total'),
         dashboardRunning: document.getElementById('dashboard-running'),
@@ -628,13 +536,15 @@
         dashboardNeedsInspection: document.getElementById('dashboard-needs-inspection'),
         dashboardMonthlyInspection: document.getElementById('dashboard-monthly-inspection'),
         dashboardPendingRepair: document.getElementById('dashboard-pending-repair'),
-        dashboardLatestList: document.getElementById('dashboard-latest-list'),
+        dashboardLatestList: document.getElementById('dashboard-latest-list'), // 개별 장비 상태
+
         // Report Elements
         reportTotalRtu: document.getElementById('report-total-rtu'),
         reportTotalInspection: document.getElementById('report-total-inspection'),
         reportTotalRepair: document.getElementById('report-total-repair'),
         downloadDataBtn: document.getElementById('download-data-btn'),
         closeModalBtn: document.getElementById('close-modal-btn'),
+
         // RTU Mode Elements (신규/수정 분리 추가)
         modeNewBtn: document.getElementById('mode-new-btn'),
         modeModifyBtn: document.getElementById('mode-modify-btn'),
@@ -660,7 +570,7 @@
             elements.modeModifyBtn.classList.add('bg-gray-200', 'text-gray-700');
             elements.rtuFormTitle.textContent = 'RTU 장비 신규 등록';
             elements.rtuSubmitBtn.textContent = 'RTU 정보 저장';
-            
+
             // 신규 등록 폼으로 변경: RTU 등록번호 직접 입력
             elements.rtuIdContainer.innerHTML = `
                 <div>
@@ -671,7 +581,6 @@
             elements.rtuIdInputForMod.value = '';
             elements.rtuForm.reset();
             clearImagePreviews();
-
         } else { // modify
             elements.modeModifyBtn.classList.add('bg-blue-600', 'text-white');
             elements.modeNewBtn.classList.add('bg-gray-200', 'text-gray-700');
@@ -711,29 +620,38 @@
         if (!select) return;
 
         select.innerHTML = '<option value="">-- RTU를 선택하세요 --</option>';
-
         rtuList.forEach(rtu => {
             // 최소한의 유효성 검사
             if (!rtu || !rtu.id || !rtu.name) return;
-            
             const option = document.createElement('option');
             option.value = rtu.id;
             option.textContent = rtu.name;
             select.appendChild(option);
         });
     }
-    
+
     function loadRtuForModification(rtuId) {
         const rtu = rtuList.find(r => r.id === rtuId);
         if (!rtu) {
             elements.rtuForm.reset();
             clearImagePreviews();
-            elements.rtuIdInputForMod.value = '';
+            document.getElementById('rtu-id-for-modification').value = '';
             return;
         }
 
-        elements.rtuIdInputForMod.value = rtu.id; // 실제 수정할 RTU의 ID 저장 (hidden input)
-        document.getElementById('rtu-name')?.value = rtu.name || ''; // 신규 모드에서만 사용되지만 안전을 위해 처리
+        // Hidden ID 필드 업데이트
+        document.getElementById('rtu-id-for-modification').value = rtu.id;
+
+        // 폼 필드 채우기
+        // 수정 모드일 때 rtu-name 필드가 드롭다운으로 대체되었으므로, 해당 필드를 다시 생성하거나 숨겨진 필드를 사용해야 하나,
+        // 현재는 ID를 기준으로 업데이트되므로, 폼의 다른 필드만 채웁니다.
+        // 드롭다운 UI에서 이미 선택되었기 때문에 rtu-name 필드를 직접 채울 필요는 없습니다.
+        
+        // 기존 코드의 문제: 수정 모드에서 rtu-name input이 없어지므로, form.reset() 후 값 채우는 과정에서 오류 발생 가능
+        // 현재 로직은 수정 모드에서 rtu-name input이 *드롭다운으로 대체*되므로, rtu-name 필드는 채울 수 없음.
+        // 이 부분은 드롭다운 변경 시 폼 필드를 업데이트하는 것으로 충분합니다.
+        
+        // 드롭다운이 아닌 다른 필드 채우기
         document.getElementById('rtu-region').value = rtu.region || '';
         document.getElementById('rtu-model').value = rtu.model || '';
         document.getElementById('rtu-capacity').value = rtu.capacity || '';
@@ -745,579 +663,239 @@
         document.getElementById('rtu-pressure-high').value = rtu.pressureHighLimit || '';
         document.getElementById('rtu-pressure-low').value = rtu.pressureLowLimit || '';
         document.getElementById('rtu-notes').value = rtu.notes || '';
-        
-        // 이미지 미리보기 로드
+
+        // 이미지 미리보기 처리
         clearImagePreviews();
         ['image1', 'image2', 'image3'].forEach((key, index) => {
-            if (rtu[key] && rtu[key].startsWith('data:')) {
-                const imgElement = document.getElementById(`image-preview-${index + 1}`);
-                imgElement.src = rtu[key];
-                elements.imagePreviewContainer.classList.remove('hidden');
+            const preview = document.getElementById(`image-preview-${index + 1}`);
+            if (rtu[key] && preview) {
+                preview.src = rtu[key];
+                preview.style.display = 'inline-block';
             }
         });
+        updateImagePreviewVisibility();
     }
 
-    // --- 파일 미리보기 로직 ---
-    window.previewImage = function(event, index) {
-        const reader = new FileReader();
-        reader.onload = function(){
-            const output = document.getElementById(`image-preview-${index}`);
-            output.src = reader.result;
-            elements.imagePreviewContainer.classList.remove('hidden');
-        };
-        if (event.target.files[0]) {
-            reader.readAsDataURL(event.target.files[0]);
+    function switchTab(targetTab) {
+        // 모든 탭 버튼 비활성화
+        elements.tabButtons.forEach(btn => {
+            btn.classList.remove('tab-active', 'border-blue-500');
+            btn.classList.add('border-transparent');
+        });
+
+        // 모든 탭 페이지 숨기기
+        document.querySelectorAll('.tab-page').forEach(page => {
+            page.classList.add('hidden');
+        });
+
+        // 대상 탭 버튼 활성화
+        const activeTabBtn = document.querySelector(`.tab-btn[data-tab="${targetTab}"]`);
+        if (activeTabBtn) {
+            activeTabBtn.classList.add('tab-active', 'border-blue-500');
+            activeTabBtn.classList.remove('border-transparent');
+        }
+
+        // 대상 탭 페이지 표시
+        const activeTabPage = document.getElementById(targetTab);
+        if (activeTabPage) {
+            activeTabPage.classList.remove('hidden');
+        }
+
+        // 탭 전환 시 필요한 데이터 업데이트/렌더링
+        if (targetTab === 'dashboard') {
+            updateDashboard(); // 대시보드 데이터 업데이트
+        } else if (targetTab === 'rtu-manage') {
+            renderRtuList(); // 장비 목록 업데이트
+            switchRtuMode(rtuMode); // 현재 모드 UI 새로고침 (수정 모드일 경우 드롭다운 업데이트)
+        } else if (targetTab === 'inspection-manage' || targetTab === 'repair-manage') {
+            populateRtuSelects(); // 점검/수리 폼의 RTU 선택 드롭다운 업데이트
+            if (targetTab === 'inspection-manage') renderInspectionList(); // 점검 목록 업데이트
+            if (targetTab === 'repair-manage') renderRepairList(); // 수리 목록 업데이트
+        } else if (targetTab === 'report-page') {
+             updateReportDashboard(); // 보고서 페이지 요약 업데이트
         }
     }
 
-    function clearImagePreviews() {
-        ['image-preview-1', 'image-preview-2', 'image-preview-3'].forEach(id => {
-            const img = document.getElementById(id);
-            if (img) img.src = '';
+    // 탭 버튼 이벤트 리스너 설정
+    elements.tabButtons.forEach(btn => {
+        btn.addEventListener('click', () => {
+            switchTab(btn.getAttribute('data-tab'));
         });
-        elements.imagePreviewContainer.classList.add('hidden');
-    }
+    });
 
-    // --- RTU 폼 제출 로직 ---
-    elements.rtuForm.addEventListener('submit', async (e) => {
+    // --- RTU 관련 함수 ---
+
+    function handleRtuFormSubmit(e) {
         e.preventDefault();
-        
-        const form = e.target;
-        const formData = new FormData(form);
-        const rtuData = {};
-        let isNewRtu = rtuMode === 'new';
-        let rtuId = elements.rtuIdInputForMod.value || null;
 
-        if (isNewRtu) {
-            const nameInput = document.getElementById('rtu-name').value.trim();
-            if (!nameInput) {
-                alert("RTU 등록번호/ID를 입력해주세요.");
-                return;
-            }
-            // 신규 등록 시 ID 중복 확인
-            if (rtuList.some(rtu => rtu.name === nameInput)) {
-                alert(`RTU 등록번호/ID '${nameInput}'는 이미 존재합니다. 다른 ID를 사용해주세요.`);
-                return;
-            }
-            rtuId = Date.now().toString(); // 신규 ID 생성
-            rtuData.name = nameInput;
-        } else {
-            // 수정 모드에서는 선택된 RTU ID를 사용하고, name은 기존 값을 유지하거나 수정되지 않음
-            const selectedName = document.getElementById('rtu-select-modify')?.options[document.getElementById('rtu-select-modify').selectedIndex]?.text;
-            if (!rtuId) {
-                alert("수정할 RTU를 선택해주세요.");
-                return;
-            }
-            rtuData.name = selectedName;
-        }
+        const formData = new FormData(elements.rtuForm);
+        const rtuData = Object.fromEntries(formData.entries());
 
-        rtuData.id = rtuId;
-        rtuData.createdAt = rtuList.find(r => r.id === rtuId)?.createdAt || new Date().toISOString(); // 생성 시간 유지
-        rtuData.updatedAt = new Date().toISOString(); // 업데이트 시간 기록
+        // 이미지 데이터 처리 (base64 인코딩)
+        const imageKeys = ['image1', 'image2', 'image3'];
+        let imagePromises = [];
 
-        // 나머지 필드 처리
-        rtuData.region = formData.get('region');
-        rtuData.model = formData.get('model');
-        rtuData.capacity = formData.get('capacity');
-        rtuData.unitType = formData.get('unitType');
-        rtuData.refrigerant = formData.get('refrigerant');
-        rtuData.status = formData.get('status');
-        rtuData.electricPhase = formData.get('electricPhase');
-        rtuData.date = formData.get('date');
-        rtuData.pressureHighLimit = formData.get('pressureHighLimit');
-        rtuData.pressureLowLimit = formData.get('pressureLowLimit');
-        rtuData.notes = formData.get('notes');
-
-        // 이미지 파일 처리 (Data URL로 저장)
-        for (let i = 1; i <= 3; i++) {
-            const file = formData.get(`image${i}`);
-            const key = `image${i}`;
-            
-            if (file && file.size > 0) {
-                // 새 파일이 업로드된 경우
-                rtuData[key] = await fileToBase64(file);
-            } else if (!isNewRtu) {
-                // 수정 모드이고 새 파일이 없는 경우: 기존 파일 데이터 유지 (URL이 아닌 Data URL 문자열일 경우)
-                const existingRtu = rtuList.find(r => r.id === rtuId);
-                if (existingRtu && existingRtu[key] && existingRtu[key].startsWith('data:')) {
-                    rtuData[key] = existingRtu[key];
+        imageKeys.forEach(key => {
+            const fileInput = document.getElementById(`rtu-${key}`);
+            if (fileInput && fileInput.files.length > 0) {
+                // 새로운 파일이 업로드된 경우
+                imagePromises.push(readFileAsBase64(fileInput.files[0]).then(base64 => ({ key, base64 })));
+            } else if (rtuMode === 'modify' && document.getElementById('rtu-id-for-modification').value) {
+                // 수정 모드에서 파일이 변경되지 않았으면 기존 데이터 유지
+                const existingRtu = rtuList.find(r => r.id === document.getElementById('rtu-id-for-modification').value);
+                if (existingRtu && existingRtu[key]) {
+                    rtuData[key] = existingRtu[key]; // 기존 base64 문자열 유지
                 } else {
-                    rtuData[key] = '';
+                     rtuData[key] = ''; // 파일이 없으면 빈 문자열
                 }
             } else {
-                rtuData[key] = '';
+                 rtuData[key] = ''; // 파일이 없으면 빈 문자열
             }
-        }
-        
-        // 목록 업데이트
-        if (isNewRtu) {
-            rtuList.push(rtuData);
-            alert(`RTU 장비 '${rtuData.name}'가 성공적으로 등록되었습니다.`);
-        } else {
-            const index = rtuList.findIndex(r => r.id === rtuId);
-            if (index !== -1) {
-                // 기존 RTU의 모든 속성을 새 데이터로 교체
-                rtuList[index] = { ...rtuList[index], ...rtuData }; 
-                alert(`RTU 장비 '${rtuData.name}' 정보가 성공적으로 수정되었습니다.`);
+        });
+
+        Promise.all(imagePromises).then(results => {
+            results.forEach(res => {
+                rtuData[res.key] = res.base64;
+            });
+
+            // 폼에서 이미지 파일 자체 필드는 제거 (데이터 형식 간소화)
+            imageKeys.forEach(key => {
+                delete rtuData[key];
+            });
+
+
+            if (rtuMode === 'new') {
+                // 신규 등록 로직
+                // rtuData.name은 신규 등록 시 입력된 RTU 등록번호/ID
+                if (rtuList.some(r => r.name === rtuData.name)) {
+                    alert('이미 등록된 RTU 등록번호/ID 입니다. 다른 ID를 사용해 주세요.');
+                    return;
+                }
+
+                // ID 할당
+                const newId = 'RTU-' + Date.now();
+                const newRtu = { ...rtuData, id: newId, date: rtuData.date || new Date().toISOString().split('T')[0] };
+                rtuList.push(newRtu);
+                alert(`RTU ${newRtu.name} (${newId})가 성공적으로 등록되었습니다.`);
+                elements.rtuForm.reset();
+                clearImagePreviews();
+
+            } else {
+                // 수정 로직
+                const rtuId = elements.rtuIdInputForMod.value;
+                if (!rtuId) {
+                    alert("수정 대상 RTU를 선택해 주세요.");
+                    return;
+                }
+
+                const rtuIndex = rtuList.findIndex(r => r.id === rtuId);
+                if (rtuIndex > -1) {
+                    // RTU 이름(name)은 수정할 수 없다고 가정하고 ID를 기준으로 업데이트
+                    // rtuData에는 name 필드가 없으므로, 기존 name을 유지
+                    const existingName = rtuList[rtuIndex].name;
+
+                    // rtuData에 rtuSelect라는 드롭다운 필드가 있으므로, 수정 시에는 제거
+                    delete rtuData.rtuSelect; 
+
+                    rtuList[rtuIndex] = { 
+                        ...rtuList[rtuIndex], 
+                        ...rtuData, 
+                        id: rtuId,
+                        name: existingName // 이름은 유지
+                    };
+                    alert(`RTU ${rtuList[rtuIndex].name} 정보가 성공적으로 수정되었습니다.`);
+                    // 수정 후 폼은 유지하고, 목록만 새로고침
+                } else {
+                    alert("수정 대상 RTU를 찾을 수 없습니다.");
+                    return;
+                }
             }
-        }
 
-        saveList(STORAGE_KEYS.RTU, rtuList);
-        form.reset();
-        clearImagePreviews();
-        switchRtuMode('new'); // 다시 신규 등록 모드로 전환
-        renderRtuList();
-        populateRtuSelects(); // 다른 폼의 드롭다운 업데이트
-    });
+            saveList(STORAGE_KEYS.RTU, rtuList);
+            renderRtuList();
+            populateRtuSelects();
+            updateDashboard(); // 대시보드 업데이트
 
-    // File 객체를 Base64 Data URL 문자열로 변환
-    function fileToBase64(file) {
-        return new Promise((resolve, reject) => {
-            const reader = new FileReader();
-            reader.readAsDataURL(file);
-            reader.onload = () => resolve(reader.result);
-            reader.onerror = error => reject(error);
+        }).catch(error => {
+            console.error('이미지 처리 중 오류 발생:', error);
+            alert('장비 정보를 저장하는 중 오류가 발생했습니다.');
         });
     }
 
-    // --- RTU 목록 렌더링 ---
-    function renderRtuList() {
-        elements.rtuList.innerHTML = '';
-        elements.rtuCountSpan.textContent = rtuList.length;
+    elements.rtuForm.addEventListener('submit', handleRtuFormSubmit);
 
-        if (rtuList.length === 0) {
-            elements.rtuList.innerHTML = '<p class="text-gray-500 italic p-4 border rounded-lg">등록된 RTU 장비가 없습니다.</p>';
-            return;
-        }
+    // --- 점검/수리 드롭다운 업데이트 함수 ---
+    function populateRtuSelects() {
+        // 장비 등록/관리 페이지의 드롭다운은 switchRtuMode에서 처리됨
+        // 점검/수리 페이지의 드롭다운 업데이트
+        const selects = [elements.inspectionRtuSelect, elements.repairRtuSelect];
 
-        rtuList.sort((a, b) => (a.name || '').localeCompare(b.name || '', 'ko')); // 이름 순으로 정렬 (null/undefined 대비)
-
-        rtuList.forEach(rtu => {
-            // 유효하지 않은 데이터 항목 건너뛰기
-            if (!rtu || !rtu.id || !rtu.name) return; 
-
-            const listItem = document.createElement('div');
-            listItem.className = 'flex items-center justify-between bg-white p-4 border rounded-lg shadow-sm';
-            listItem.innerHTML = `
-                <div class="flex-1 min-w-0 mr-4">
-                    <p class="text-lg font-semibold text-gray-800 truncate">${rtu.name}</p>
-                    <p class="text-sm text-gray-500">${rtu.region || '지역 미지정'} | ${rtu.model || '모델 미상'}</p>
-                </div>
-                <div class="flex items-center space-x-2">
-                    <span class="px-3 py-1 text-sm font-medium rounded-full ${getStatusClass(rtu.status)}">${rtu.status}</span>
-                    <button data-id="${rtu.id}" data-type="rtu" class="detail-btn bg-blue-100 text-blue-700 hover:bg-blue-200 text-sm font-medium py-1 px-3 rounded-full transition duration-150">상세</button>
-                    <button data-id="${rtu.id}" class="modify-rtu-btn bg-yellow-100 text-yellow-700 hover:bg-yellow-200 text-sm font-medium py-1 px-3 rounded-full transition duration-150">수정</button>
-                    <button data-id="${rtu.id}" class="delete-rtu-btn bg-red-100 text-red-700 hover:bg-red-200 text-sm font-medium py-1 px-3 rounded-full transition duration-150">삭제</button>
-                </div>
-            `;
-            elements.rtuList.appendChild(listItem);
+        selects.forEach(select => {
+            const originalValue = select.value;
+            select.innerHTML = '<option value="">-- RTU를 선택하세요 --</option>';
+            rtuList.forEach(rtu => {
+                const option = document.createElement('option');
+                option.value = rtu.id;
+                option.textContent = `${rtu.name} (${rtu.region || '지역 미정'})`;
+                select.appendChild(option);
+            });
+            // 선택된 값 유지 시도
+            if (originalValue && rtuList.some(r => r.id === originalValue)) {
+                 select.value = originalValue;
+            }
         });
-
-        // 이벤트 리스너 재할당
-        document.querySelectorAll('.detail-btn').forEach(btn => btn.addEventListener('click', handleDetailClick));
-        document.querySelectorAll('.modify-rtu-btn').forEach(btn => btn.addEventListener('click', handleRtuModifyClick));
-        document.querySelectorAll('.delete-rtu-btn').forEach(btn => btn.addEventListener('click', handleRtuDeleteClick));
     }
+
+    // --- 대시보드 관련 함수 ---
 
     function getStatusClass(status) {
-        switch (status) {
-            case '작동중': return 'bg-green-100 text-green-800';
-            case '정지됨': return 'bg-gray-100 text-gray-800';
-            case '점검필요': return 'bg-red-100 text-red-800';
-            default: return 'bg-gray-100 text-gray-800';
+        switch(status) {
+            case '작동중':
+                return 'text-green-600 bg-green-100 py-1 px-2 rounded-full';
+            case '정지됨':
+                return 'text-gray-600 bg-gray-100 py-1 px-2 rounded-full';
+            case '점검필요':
+                return 'text-red-600 bg-red-100 py-1 px-2 rounded-full';
+            default:
+                return 'text-gray-600';
         }
     }
 
-    function getRepairStatusClass(status) {
-        switch (status) {
-            case '완료': return 'bg-green-100 text-green-800';
-            case '진행중': return 'bg-yellow-100 text-yellow-800';
-            case '요청': return 'bg-red-100 text-red-800';
-            default: return 'bg-gray-100 text-gray-800';
-        }
-    }
+    function renderLatestRtuStatus() {
+        // 최근 5개 RTU 가져오기 (가장 최근에 등록된/수정된)
+        const latestRtu = rtuList
+            .sort((a, b) => {
+                // [수정] 유효하지 않은 날짜(Invalid Date)를 0 (가장 오래된 시간)으로 안전하게 처리하여 sort() 오류 방지
+                const timeA = (a.date && !isNaN(new Date(a.date).getTime())) ? new Date(a.date).getTime() : 0;
+                const timeB = (b.date && !isNaN(new Date(b.date).getTime())) ? new Date(b.date).getTime() : 0;
+                return timeB - timeA; // 최신 날짜가 앞으로 오도록 내림차순 정렬
+            })
+            .slice(0, 5); // 5개만 선택
 
-    // --- RTU 수정 버튼 클릭 핸들러 ---
-    function handleRtuModifyClick(e) {
-        const rtuId = e.target.dataset.id;
-        // 장비 관리 탭으로 이동하고 수정 모드로 전환
-        const rtuManageTab = document.querySelector('button[data-tab="rtu-manage"]');
-        rtuManageTab.click(); 
-        switchRtuMode('modify', rtuId);
-    }
-
-    // --- RTU 삭제 버튼 클릭 핸들러 ---
-    function handleRtuDeleteClick(e) {
-        const rtuId = e.target.dataset.id;
-        const rtu = rtuList.find(r => r.id === rtuId);
-
-        if (!rtu) return; // 데이터가 이미 없으면 리턴
-
-        if (confirm(`RTU 장비 '${rtu.name}'를 정말 삭제하시겠습니까? 관련 점검 및 수리 기록도 함께 삭제됩니다.`)) {
-            // RTU 삭제
-            rtuList = rtuList.filter(r => r.id !== rtuId);
-            saveList(STORAGE_KEYS.RTU, rtuList);
-
-            // 연관된 점검/수리 기록 삭제
-            inspectionList = inspectionList.filter(i => i.rtuId !== rtuId);
-            saveList(STORAGE_KEYS.INSPECTION, inspectionList);
-            repairList = repairList.filter(r => r.rtuId !== rtuId);
-            saveList(STORAGE_KEYS.REPAIR, repairList);
-
-            renderRtuList();
-            populateRtuSelects(); // 드롭다운 목록 업데이트
-            alert(`RTU 장비 '${rtu.name}' 및 관련 기록이 삭제되었습니다.`);
-        }
-    }
-
-    // --- 점검 폼 제출 로직 ---
-    elements.inspectionForm.addEventListener('submit', (e) => {
-        e.preventDefault();
+        let html = '';
         
-        const form = e.target;
-        const formData = new FormData(form);
-        const inspectionData = {
-            id: Date.now().toString(),
-            createdAt: new Date().toISOString(),
-            rtuId: formData.get('rtuId'),
-            inspectionDate: formData.get('inspectionDate'),
-            inspector: formData.get('inspector'),
-            result: formData.get('result'),
-            notes: formData.get('notes'),
-            checks: {},
-            measurements: {
-                comp1Hp: formData.get('comp1Hp'),
-                comp1Lp: formData.get('comp1Lp'),
-                comp1Amp: formData.get('comp1Amp'),
-                comp2Hp: formData.get('comp2Hp'),
-                comp2Lp: formData.get('comp2Lp'),
-                comp2Amp: formData.get('comp2Amp'),
-                superheat: formData.get('superheat'),
-                subcool: formData.get('subcool'),
-                evapTemp: formData.get('evapTemp'),
-            }
-        };
-
-        // 부품 체크 결과 저장
-        for (let i = 1; i <= INSPECTION_CHECK_LABELS.length; i++) {
-            const checkName = `check${i}`;
-            inspectionData.checks[INSPECTION_CHECK_LABELS[i-1]] = formData.get(checkName) || '미점검';
-        }
-
-        inspectionList.push(inspectionData);
-        saveList(STORAGE_KEYS.INSPECTION, inspectionList);
-        form.reset();
-        renderInspectionList();
-        
-        // RTU 상태 업데이트 (점검 결과에 따라)
-        const rtu = rtuList.find(r => r.id === inspectionData.rtuId);
-        if (rtu) {
-            if (inspectionData.result === '정상') {
-                rtu.status = '작동중';
-            } else if (inspectionData.result === '수리 필요') {
-                rtu.status = '점검필요'; // 수리가 필요한 경우 점검 필요 상태로 변경
-            }
-            saveList(STORAGE_KEYS.RTU, rtuList);
-            renderRtuList(); // RTU 목록 UI도 업데이트
-        }
-        
-        alert("점검 정보가 성공적으로 등록되었습니다.");
-    });
-
-    // --- 점검 목록 렌더링 ---
-    function renderInspectionList() {
-        elements.inspectionList.innerHTML = '';
-        elements.inspectionCountSpan.textContent = inspectionList.length;
-
-        if (inspectionList.length === 0) {
-            elements.inspectionList.innerHTML = '<p class="text-gray-500 italic p-4 border rounded-lg">등록된 점검 기록이 없습니다.</p>';
-            return;
-        }
-
-        inspectionList.sort((a, b) => new Date(b.inspectionDate) - new Date(a.inspectionDate)); // 날짜 역순 정렬
-
-        inspectionList.forEach(inspection => {
-             // 유효하지 않은 데이터 항목 건너뛰기
-            if (!inspection || !inspection.id || !inspection.rtuId) return;
-
-            const rtu = rtuList.find(r => r.id === inspection.rtuId);
-            const rtuName = rtu ? rtu.name : '알 수 없는 RTU';
-            
-            const listItem = document.createElement('div');
-            listItem.className = 'flex items-center justify-between bg-white p-4 border rounded-lg shadow-sm';
-            listItem.innerHTML = `
-                <div class="flex-1 min-w-0 mr-4">
-                    <p class="text-lg font-semibold text-gray-800 truncate">${rtuName} (${inspection.inspectionDate})</p>
-                    <p class="text-sm text-gray-500">점검자: ${inspection.inspector}</p>
-                </div>
-                <div class="flex items-center space-x-2">
-                    <span class="px-3 py-1 text-sm font-medium rounded-full ${getStatusClassForInspection(inspection.result)}">${inspection.result}</span>
-                    <button data-id="${inspection.id}" data-type="inspection" class="detail-btn bg-blue-100 text-blue-700 hover:bg-blue-200 text-sm font-medium py-1 px-3 rounded-full transition duration-150">상세</button>
-                    <button data-id="${inspection.id}" class="delete-inspection-btn bg-red-100 text-red-700 hover:bg-red-200 text-sm font-medium py-1 px-3 rounded-full transition duration-150">삭제</button>
-                </div>
-            `;
-            elements.inspectionList.appendChild(listItem);
-        });
-
-        document.querySelectorAll('.detail-btn').forEach(btn => btn.addEventListener('click', handleDetailClick));
-        document.querySelectorAll('.delete-inspection-btn').forEach(btn => btn.addEventListener('click', handleInspectionDeleteClick));
-    }
-
-    function getStatusClassForInspection(result) {
-        switch (result) {
-            case '정상': return 'bg-green-100 text-green-800';
-            case '주의': return 'bg-yellow-100 text-yellow-800';
-            case '수리 필요': return 'bg-red-100 text-red-800';
-            default: return 'bg-gray-100 text-gray-800';
-        }
-    }
-
-    // --- 점검 기록 삭제 핸들러 ---
-    function handleInspectionDeleteClick(e) {
-        const inspectionId = e.target.dataset.id;
-        const inspection = inspectionList.find(i => i.id === inspectionId);
-
-        if (confirm(`해당 점검 기록을 정말 삭제하시겠습니까?`)) {
-            inspectionList = inspectionList.filter(i => i.id !== inspectionId);
-            saveList(STORAGE_KEYS.INSPECTION, inspectionList);
-            renderInspectionList();
-            alert("점검 기록이 삭제되었습니다.");
-        }
-    }
-
-    // --- 수리 폼 제출 로직 ---
-    elements.repairForm.addEventListener('submit', (e) => {
-        e.preventDefault();
-        
-        const form = e.target;
-        const formData = new FormData(form);
-        const repairData = {
-            id: Date.now().toString(),
-            createdAt: new Date().toISOString(),
-            rtuId: formData.get('rtuId'),
-            repairDate: formData.get('repairDate'),
-            engineer: formData.get('engineer'),
-            issue: formData.get('issue'),
-            status: formData.get('status')
-        };
-
-        repairList.push(repairData);
-        saveList(STORAGE_KEYS.REPAIR, repairList);
-        form.reset();
-        renderRepairList();
-        
-        // RTU 상태 업데이트 (수리 완료 시)
-        const rtu = rtuList.find(r => r.id === repairData.rtuId);
-        if (rtu && repairData.status === '완료') {
-            rtu.status = '작동중';
-            saveList(STORAGE_KEYS.RTU, rtuList);
-            renderRtuList(); // RTU 목록 UI도 업데이트
-        }
-
-        alert("수리 정보가 성공적으로 등록되었습니다.");
-    });
-
-    // --- 수리 목록 렌더링 ---
-    function renderRepairList() {
-        elements.repairList.innerHTML = '';
-        elements.repairCountSpan.textContent = repairList.length;
-
-        if (repairList.length === 0) {
-            elements.repairList.innerHTML = '<p class="text-gray-500 italic p-4 border rounded-lg">등록된 수리 기록이 없습니다.</p>';
-            return;
-        }
-
-        repairList.sort((a, b) => new Date(b.repairDate) - new Date(a.repairDate)); // 날짜 역순 정렬
-
-        repairList.forEach(repair => {
-             // 유효하지 않은 데이터 항목 건너뛰기
-            if (!repair || !repair.id || !repair.rtuId) return;
-
-            const rtu = rtuList.find(r => r.id === repair.rtuId);
-            const rtuName = rtu ? rtu.name : '알 수 없는 RTU';
-            
-            const listItem = document.createElement('div');
-            listItem.className = 'flex items-center justify-between bg-white p-4 border rounded-lg shadow-sm';
-            listItem.innerHTML = `
-                <div class="flex-1 min-w-0 mr-4">
-                    <p class="text-lg font-semibold text-gray-800 truncate">${rtuName} (${repair.repairDate})</p>
-                    <p class="text-sm text-gray-500 truncate">조치: ${repair.issue}</p>
-                </div>
-                <div class="flex items-center space-x-2">
-                    <span class="px-3 py-1 text-sm font-medium rounded-full ${getRepairStatusClass(repair.status)}">${repair.status}</span>
-                    <button data-id="${repair.id}" data-type="repair" class="detail-btn bg-blue-100 text-blue-700 hover:bg-blue-200 text-sm font-medium py-1 px-3 rounded-full transition duration-150">상세</button>
-                    <button data-id="${repair.id}" class="delete-repair-btn bg-red-100 text-red-700 hover:bg-red-200 text-sm font-medium py-1 px-3 rounded-full transition duration-150">삭제</button>
-                </div>
-            `;
-            elements.repairList.appendChild(listItem);
-        });
-
-        document.querySelectorAll('.detail-btn').forEach(btn => btn.addEventListener('click', handleDetailClick));
-        document.querySelectorAll('.delete-repair-btn').forEach(btn => btn.addEventListener('click', handleRepairDeleteClick));
-    }
-
-    // --- 수리 기록 삭제 핸들러 ---
-    function handleRepairDeleteClick(e) {
-        const repairId = e.target.dataset.id;
-        const repair = repairList.find(r => r.id === repairId);
-
-        if (confirm(`해당 수리 기록을 정말 삭제하시겠습니까?`)) {
-            repairList = repairList.filter(r => r.id !== repairId);
-            saveList(STORAGE_KEYS.REPAIR, repairList);
-            renderRepairList();
-            alert("수리 기록이 삭제되었습니다.");
-        }
-    }
-
-    // --- RTU 선택 드롭다운 채우기 (점검/수리 폼) ---
-    function populateRtuSelects() {
-        const optionsHtml = rtuList
-            // 유효성 검사 추가: ID와 이름이 있는 항목만 드롭다운에 추가
-            .filter(rtu => rtu && rtu.id && rtu.name) 
-            .map(rtu => `<option value="${rtu.id}">${rtu.name}</option>`)
-            .join('');
-        
-        elements.inspectionRtuSelect.innerHTML = '<option value="">-- RTU를 선택하세요 --</option>' + optionsHtml;
-        elements.repairRtuSelect.innerHTML = '<option value="">-- RTU를 선택하세요 --</option>' + optionsHtml;
-    }
-
-    // --- 상세 정보 모달 처리 ---
-    function handleDetailClick(e) {
-        const id = e.target.dataset.id;
-        const type = e.target.dataset.type;
-        let data, title, contentHtml;
-
-        if (type === 'rtu') {
-            data = rtuList.find(r => r.id === id);
-            if (!data) return; // 데이터 없음
-            title = `RTU 상세 정보: ${data.name}`;
-            contentHtml = generateRtuDetailHtml(data);
-        } else if (type === 'inspection') {
-            data = inspectionList.find(i => i.id === id);
-            if (!data) return;
-            const rtu = rtuList.find(r => r.id === data.rtuId);
-            title = `점검 기록 상세 정보: ${rtu ? rtu.name : '알 수 없음'}`;
-            contentHtml = generateInspectionDetailHtml(data, rtu);
-        } else if (type === 'repair') {
-            data = repairList.find(r => r.id === id);
-            if (!data) return;
-            const rtu = rtuList.find(r => r.id === data.rtuId);
-            title = `수리 기록 상세 정보: ${rtu ? rtu.name : '알 수 없음'}`;
-            contentHtml = generateRepairDetailHtml(data, rtu);
+        if (latestRtu.length === 0) {
+            html = '<p class="text-gray-500 italic">등록된 장비가 없습니다.</p>';
         } else {
-            return;
+            html = latestRtu.map(rtu => {
+                const statusClass = getStatusClass(rtu.status);
+                return `
+                    <div class="flex items-center justify-between p-3 bg-white rounded-lg shadow-sm border hover:bg-gray-50 transition duration-150 cursor-pointer" onclick="showDetailModal('${rtu.id}', 'rtu')">
+                        <div class="flex flex-col">
+                            <span class="font-semibold text-gray-800">${rtu.name}</span>
+                            <span class="text-xs text-gray-500">${rtu.region} (${rtu.date})</span>
+                        </div>
+                        <span class="text-sm font-medium ${statusClass}">${rtu.status}</span>
+                    </div>
+                `;
+            }).join('');
         }
-
-        currentModalData = { id, type };
-        document.getElementById('modal-title').textContent = title;
-        document.getElementById('modal-content').innerHTML = contentHtml;
-        elements.detailModal.classList.remove('hidden');
-    }
-
-    function generateRtuDetailHtml(rtu) {
-        const imagesHtml = ['image1', 'image2', 'image3'].map(key => {
-            if (rtu[key] && rtu[key].startsWith('data:')) {
-                return `<img src="${rtu[key]}" class="thumb" alt="RTU 사진">`;
-            }
-            return '';
-        }).join('');
-
-        const relatedData = getRelatedData(rtu.id);
-        const latestInspection = relatedData.inspections.length > 0 ? relatedData.inspections[0].inspectionDate : '없음';
-        const latestRepair = relatedData.repairs.length > 0 ? relatedData.repairs[0].repairDate : '없음';
-
-        return `
-            <div class="grid grid-cols-2 gap-x-4 gap-y-2">
-                <p class="font-bold">등록번호/ID:</p><p>${rtu.name}</p>
-                <p class="font-bold">현재 상태:</p><p><span class="px-3 py-1 text-sm font-medium rounded-full ${getStatusClass(rtu.status)}">${rtu.status}</span></p>
-                <p class="font-bold">설치 날짜:</p><p>${rtu.date || '미정'}</p>
-                <p class="font-bold">설치 지역:</p><p>${rtu.region || '미정'}</p>
-                <p class="font-bold">모델/용량:</p><p>${rtu.model || '미상'} / ${rtu.capacity || '미상'}</p>
-                <p class="font-bold">고압/저압 제한:</p><p>${rtu.pressureHighLimit || '미정'} PSI / ${rtu.pressureLowLimit || '미정'} PSI</p>
-            </div>
-            <div class="mt-4 border-t pt-3">
-                <p class="font-bold mb-1">최근 활동:</p>
-                <p>총 점검 기록: ${relatedData.inspections.length}건 (최근: ${latestInspection})</p>
-                <p>총 수리 기록: ${relatedData.repairs.length}건 (최근: ${latestRepair})</p>
-            </div>
-            <div class="mt-4 border-t pt-3">
-                <p class="font-bold mb-1">사진:</p>
-                <div class="flex gap-2 flex-wrap">${imagesHtml || '<p class="text-gray-500 italic">등록된 사진 없음</p>'}</div>
-            </div>
-            <div class="mt-4 border-t pt-3">
-                <p class="font-bold mb-1">기타 메모:</p>
-                <p class="whitespace-pre-wrap">${rtu.notes || '특이사항 없음'}</p>
-            </div>
-            <div class="mt-4 border-t pt-3">
-                <button onclick="handleDetailActionClick('modify')" class="bg-yellow-500 text-white font-semibold py-2 px-4 rounded-lg hover:bg-yellow-600 transition duration-150 mr-2">장비 수정</button>
-                <button onclick="handleDetailActionClick('delete')" class="bg-red-500 text-white font-semibold py-2 px-4 rounded-lg hover:bg-red-600 transition duration-150">장비 삭제</button>
-            </div>
-        `;
-    }
-
-    function generateInspectionDetailHtml(inspection, rtu) {
-        const checksHtml = Object.entries(inspection.checks || {}).map(([key, value]) => // null 체크 추가
-            `<p class="font-bold">${key}:</p><p class="${getStatusClassForInspection(value)} px-2 rounded-full">${value}</p>`
-        ).join('');
         
-        return `
-            <div class="grid grid-cols-2 gap-x-4 gap-y-2">
-                <p class="font-bold">대상 RTU:</p><p>${rtu ? rtu.name : '알 수 없음'}</p>
-                <p class="font-bold">점검 날짜:</p><p>${inspection.inspectionDate}</p>
-                <p class="font-bold">점검자:</p><p>${inspection.inspector}</p>
-                <p class="font-bold">최종 결과:</p><p><span class="${getStatusClassForInspection(inspection.result)} px-2 rounded-full">${inspection.result}</span></p>
-            </div>
-            <div class="mt-4 border-t pt-3">
-                <p class="font-bold mb-1">부품 점검 결과:</p>
-                <div class="grid grid-cols-2 gap-x-4 gap-y-2 text-sm">${checksHtml}</div>
-            </div>
-            <div class="mt-4 border-t pt-3">
-                <p class="font-bold mb-1">측정값:</p>
-                <div class="grid grid-cols-3 gap-2 text-sm">
-                    <p class="font-bold">Comp 1 HP:</p><p>${inspection.measurements?.comp1Hp || '-'}</p>
-                    <p class="font-bold">Comp 1 LP:</p><p>${inspection.measurements?.comp1Lp || '-'}</p>
-                    <p class="font-bold">Comp 1 Amp:</p><p>${inspection.measurements?.comp1Amp || '-'}</p>
-                    <p class="font-bold">Superheat:</p><p>${inspection.measurements?.superheat || '-'}</p>
-                    <p class="font-bold">Subcool:</p><p>${inspection.measurements?.subcool || '-'}</p>
-                    <p class="font-bold">Evap Temp:</p><p>${inspection.measurements?.evapTemp || '-'}</p>
-                </div>
-            </div>
-            <div class="mt-4 border-t pt-3">
-                <p class="font-bold mb-1">상세 특이사항:</p>
-                <p class="whitespace-pre-wrap">${inspection.notes || '특이사항 없음'}</p>
-            </div>
-        `;
+        elements.dashboardLatestList.innerHTML = html;
     }
 
-    function generateRepairDetailHtml(repair, rtu) {
-        return `
-            <div class="grid grid-cols-2 gap-x-4 gap-y-2">
-                <p class="font-bold">대상 RTU:</p><p>${rtu ? rtu.name : '알 수 없음'}</p>
-                <p class="font-bold">처리 상태:</p><p><span class="${getRepairStatusClass(repair.status)} px-2 rounded-full">${repair.status}</span></p>
-                <p class="font-bold">수리 날짜:</p><p>${repair.repairDate}</p>
-                <p class="font-bold">담당자:</p><p>${repair.engineer}</p>
-            </div>
-            <div class="mt-4 border-t pt-3">
-                <p class="font-bold mb-1">발생 문제 및 조치 내용:</p>
-                <p class="whitespace-pre-wrap">${repair.issue}</p>
-            </div>
-        `;
-    }
-
-    window.handleDetailActionClick = function(action) {
-        elements.detailModal.classList.add('hidden'); // 모달 닫기
-        
-        if (action === 'modify' && currentModalData.type === 'rtu') {
-            handleRtuModifyClick({ target: { dataset: { id: currentModalData.id } } });
-        } else if (action === 'delete' && currentModalData.type === 'rtu') {
-            handleRtuDeleteClick({ target: { dataset: { id: currentModalData.id } } });
-        }
-    }
-
-
-    // --- 대시보드 업데이트 로직 ---
     function updateDashboard() {
-        // 1. 장비 상태 요약
+        // 1. 상태별 카운트 업데이트
         const total = rtuList.length;
         const running = rtuList.filter(r => r.status === '작동중').length;
         const stopped = rtuList.filter(r => r.status === '정지됨').length;
@@ -1328,236 +906,520 @@
         elements.dashboardStopped.textContent = stopped;
         elements.dashboardNeedsInspection.textContent = needsInspection;
 
-        // 2. 처리 현황
-        const now = new Date();
-        const currentMonth = now.toISOString().substring(0, 7); // YYYY-MM
+        // 2. 처리 현황 업데이트
+        const today = new Date();
+        const yearMonth = today.getFullYear() + '-' + (today.getMonth() + 1).toString().padStart(2, '0');
 
-        const monthlyInspection = inspectionList.filter(i => i.inspectionDate && i.inspectionDate.startsWith(currentMonth)).length;
+        // 이번 달 점검 건수
+        const monthlyInspection = inspectionList.filter(i => {
+            // [수정] 날짜 유효성 검사 추가 (Invalid Date 객체에서 getFullYear 등을 호출하면 에러 발생 가능)
+            if (!i.inspectionDate) return false;
+            const iDate = new Date(i.inspectionDate);
+            if (isNaN(iDate.getTime())) return false; // 날짜가 유효하지 않으면 필터링
+            
+            const iYearMonth = iDate.getFullYear() + '-' + (iDate.getMonth() + 1).toString().padStart(2, '0');
+            return iYearMonth === yearMonth;
+        }).length;
+        
+        // 미처리 수리 요청
         const pendingRepair = repairList.filter(r => r.status !== '완료').length;
-
+        
         elements.dashboardMonthlyInspection.textContent = monthlyInspection;
         elements.dashboardPendingRepair.textContent = pendingRepair;
 
-        // 3. 개별 장비 상태 (최근 활동 5건)
-        // **!!! 문제 해결: 로딩 메시지를 가장 먼저 제거합니다 !!!**
-        elements.dashboardLatestList.innerHTML = ''; 
-        
-        const recentActivities = [];
+        // 3. 보고서 현황 업데이트 (Report 탭과 동기화)
+        elements.reportTotalRtu.textContent = total;
+        elements.reportTotalInspection.textContent = inspectionList.length;
+        elements.reportTotalRepair.textContent = repairList.length;
 
-        // 데이터 유효성 검사 및 활동 목록 생성 (스크립트 중단 방지)
-        try {
-            // RTU 업데이트
-            rtuList.forEach(rtu => {
-                // 손상된 데이터 항목 건너뛰기
-                if (!rtu || !rtu.id || !rtu.name) return; 
-                
-                const date = new Date(rtu.updatedAt || rtu.createdAt);
-                if (isNaN(date.getTime())) return; // 유효하지 않은 날짜 건너뛰기
-
-                recentActivities.push({
-                    date: date,
-                    type: '장비 정보 업데이트',
-                    rtuName: rtu.name,
-                    rtuId: rtu.id,
-                    details: `상태: ${rtu.status || '미정'}`,
-                    statusClass: getStatusClass(rtu.status || '미정')
-                });
-            });
-
-            // 점검 기록
-            inspectionList.forEach(inspection => {
-                 if (!inspection || !inspection.rtuId) return;
-
-                const date = new Date(inspection.createdAt);
-                if (isNaN(date.getTime())) return;
-
-                const rtu = rtuList.find(r => r.id === inspection.rtuId);
-                recentActivities.push({
-                    date: date,
-                    type: '점검 완료',
-                    rtuName: rtu ? rtu.name : '삭제된 RTU',
-                    rtuId: inspection.rtuId,
-                    details: `결과: ${inspection.result || '미정'}`,
-                    statusClass: getStatusClassForInspection(inspection.result || '미정')
-                });
-            });
-
-            // 수리 기록
-            repairList.forEach(repair => {
-                if (!repair || !repair.rtuId) return;
-
-                const date = new Date(repair.createdAt);
-                if (isNaN(date.getTime())) return;
-                
-                const rtu = rtuList.find(r => r.id === repair.rtuId);
-                recentActivities.push({
-                    date: date,
-                    type: `수리 기록 (${repair.status || '미정'})`,
-                    rtuName: rtu ? rtu.name : '삭제된 RTU',
-                    rtuId: repair.rtuId,
-                    details: `담당자: ${repair.engineer || '미상'}`,
-                    statusClass: getRepairStatusClass(repair.status || '미정')
-                });
-            });
-        } catch(e) {
-            console.error("데이터 유효성 검사 중 치명적인 오류 발생. 일부 항목이 손상되었을 수 있습니다.", e);
-            elements.dashboardLatestList.innerHTML = '<p class="text-red-500 font-semibold">데이터 처리 오류로 활동 목록을 표시할 수 없습니다. (콘솔 확인 요망)</p>';
-            return; // 오류 발생 시 목록 렌더링 중단
-        }
-
-        // 최신순으로 정렬하고 상위 5개만 선택
-        recentActivities.sort((a, b) => b.date - a.date);
-        const latestActivities = recentActivities.slice(0, 5);
-
-        if (latestActivities.length === 0) {
-            elements.dashboardLatestList.innerHTML = '<p class="text-gray-500 italic">최근 활동 기록이 없습니다.</p>';
-            return;
-        }
-
-        latestActivities.forEach(activity => {
-            const activityElement = document.createElement('div');
-            activityElement.className = 'flex items-center justify-between bg-gray-50 p-3 border rounded-lg';
-            
-            const dateStr = activity.date.toLocaleString('ko-KR', { 
-                year: 'numeric', month: '2-digit', day: '2-digit', 
-                hour: '2-digit', minute: '2-digit' 
-            });
-
-            activityElement.innerHTML = `
-                <div class="flex-1 min-w-0 mr-4">
-                    <p class="text-sm font-medium text-gray-800 truncate">${activity.rtuName}</p>
-                    <p class="text-xs text-gray-500">${dateStr} | ${activity.type}</p>
-                </div>
-                <p class="text-sm text-gray-600">${activity.details}</p>
-            `;
-            elements.dashboardLatestList.appendChild(activityElement);
-        });
+        // 4. 개별 장비 상태 (최근 5건) 업데이트
+        renderLatestRtuStatus();
     }
 
-
-    // --- 보고서 페이지 업데이트 로직 ---
-    function updateReportPage() {
+    function updateReportDashboard() {
         elements.reportTotalRtu.textContent = rtuList.length;
         elements.reportTotalInspection.textContent = inspectionList.length;
         elements.reportTotalRepair.textContent = repairList.length;
     }
 
-    // --- CSV 다운로드 로직 ---
-    function jsonToCsv(arr, filename) {
-        if (arr.length === 0) {
-            alert("다운로드할 데이터가 없습니다.");
+    // --- 목록 렌더링 함수 ---
+
+    function renderRtuList() {
+        elements.rtuCountSpan.textContent = rtuList.length;
+
+        if (rtuList.length === 0) {
+            elements.rtuList.innerHTML = '<p class="text-gray-500 italic">등록된 RTU 장비가 없습니다.</p>';
+            return;
+        }
+
+        // 최신순으로 정렬
+        // 날짜 유효성 검사 적용
+        const sortedList = rtuList.sort((a, b) => {
+            const timeA = (a.date && !isNaN(new Date(a.date).getTime())) ? new Date(a.date).getTime() : 0;
+            const timeB = (b.date && !isNaN(new Date(b.date).getTime())) ? new Date(b.date).getTime() : 0;
+            return timeB - timeA;
+        });
+
+        const html = sortedList.map(rtu => {
+            const statusClass = getStatusClass(rtu.status);
+            const thumbSrc = rtu.image1 || ''; // 첫 번째 이미지를 썸네일로 사용
+            
+            return `
+                <div class="p-4 bg-white rounded-lg shadow-md border hover:border-blue-300 transition duration-150">
+                    <div class="flex items-start space-x-4">
+                        ${thumbSrc ? `<img src="${thumbSrc}" alt="RTU 사진" class="thumb flex-shrink-0">` : 
+                                     `<div class="thumb flex-shrink-0 bg-gray-200 flex items-center justify-center text-gray-500 text-xs text-center">사진 없음</div>`}
+                        <div class="flex-grow">
+                            <h3 class="text-lg font-bold text-gray-900">${rtu.name}</h3>
+                            <p class="text-sm text-gray-600">${rtu.region} | ${rtu.model}</p>
+                            <p class="text-sm font-medium ${statusClass.replace('py-1 px-2 rounded-full', '')} mt-1">${rtu.status}</p>
+                        </div>
+                        <div class="flex flex-col space-y-2 flex-shrink-0">
+                            <button onclick="showDetailModal('${rtu.id}', 'rtu')" class="text-blue-600 hover:text-blue-800 text-sm font-semibold">상세</button>
+                            <button onclick="editRtu('${rtu.id}')" class="text-indigo-600 hover:text-indigo-800 text-sm font-semibold">수정</button>
+                            <button onclick="deleteItem('${rtu.id}', 'rtu')" class="text-red-600 hover:text-red-800 text-sm font-semibold">삭제</button>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }).join('');
+
+        elements.rtuList.innerHTML = html;
+    }
+    
+    // RTU 목록에서 수정 버튼 클릭 시
+    window.editRtu = function(rtuId) {
+        switchTab('rtu-manage');
+        window.switchRtuMode('modify', rtuId);
+    }
+
+
+    function renderInspectionList() {
+        elements.inspectionCountSpan.textContent = inspectionList.length;
+
+        if (inspectionList.length === 0) {
+            elements.inspectionList.innerHTML = '<p class="text-gray-500 italic">등록된 점검 기록이 없습니다.</p>';
             return;
         }
         
-        // 헤더 추출 (첫 번째 객체의 키를 사용)
-        const header = Object.keys(arr[0]).filter(key => !key.startsWith('image')); // 이미지 데이터 제외
-        const csvRows = [];
-        csvRows.push(header.join(','));
+        // 최신순으로 정렬
+        const sortedList = inspectionList.sort((a, b) => {
+             const timeA = (a.inspectionDate && !isNaN(new Date(a.inspectionDate).getTime())) ? new Date(a.inspectionDate).getTime() : 0;
+            const timeB = (b.inspectionDate && !isNaN(new Date(b.inspectionDate).getTime())) ? new Date(b.inspectionDate).getTime() : 0;
+            return timeB - timeA;
+        });
 
-        // 데이터 행 생성
-        for (const row of arr) {
-            const values = header.map(fieldName => {
-                const value = row[fieldName] === null || row[fieldName] === undefined ? '' : row[fieldName];
-                // CSV 필드 이스케이프 처리: 쉼표, 따옴표, 줄 바꿈이 포함된 경우 큰따옴표로 묶고, 내부 큰따옴표는 두 개로 이스케이프
-                const stringValue = String(value).replace(/"/g, '""');
-                return /[,"\n]/.test(value) ? `"${stringValue}"` : stringValue;
-            });
-            csvRows.push(values.join(','));
+        const html = sortedList.map(inspection => {
+            const rtu = rtuList.find(r => r.id === inspection.rtuId);
+            const rtuName = rtu ? rtu.name : '알 수 없음 (장비 삭제됨)';
+            const resultClass = inspection.result === '정상' ? 'text-green-600' : 
+                                inspection.result === '주의' ? 'text-yellow-600' : 'text-red-600';
+            
+            return `
+                <div class="p-4 bg-white rounded-lg shadow-md border hover:border-blue-300 transition duration-150">
+                    <div class="flex justify-between items-start">
+                        <div>
+                            <p class="text-sm text-gray-500">${inspection.inspectionDate} (${inspection.inspector})</p>
+                            <h3 class="text-lg font-bold text-gray-900 mt-1">${rtuName}</h3>
+                            <p class="text-base font-semibold ${resultClass} mt-1">결과: ${inspection.result}</p>
+                        </div>
+                        <div class="flex flex-col space-y-2 flex-shrink-0 mt-1">
+                            <button onclick="showDetailModal('${inspection.id}', 'inspection')" class="text-blue-600 hover:text-blue-800 text-sm font-semibold">상세</button>
+                            <button onclick="deleteItem('${inspection.id}', 'inspection')" class="text-red-600 hover:text-red-800 text-sm font-semibold">삭제</button>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }).join('');
+
+        elements.inspectionList.innerHTML = html;
+    }
+
+    function renderRepairList() {
+        elements.repairCountSpan.textContent = repairList.length;
+
+        if (repairList.length === 0) {
+            elements.repairList.innerHTML = '<p class="text-gray-500 italic">등록된 수리 기록이 없습니다.</p>';
+            return;
         }
 
-        // CSV 데이터 Blob 생성
-        const csvString = csvRows.join('\n');
-        // BOM (Byte Order Mark) 추가: 엑셀에서 한글 깨짐 방지
-        const blob = new Blob(["\ufeff" + csvString], { type: 'text/csv;charset=utf-8;' });
-        const link = document.createElement('a');
+        // 최신순으로 정렬
+        const sortedList = repairList.sort((a, b) => {
+            const timeA = (a.repairDate && !isNaN(new Date(a.repairDate).getTime())) ? new Date(a.repairDate).getTime() : 0;
+            const timeB = (b.repairDate && !isNaN(new Date(b.repairDate).getTime())) ? new Date(b.repairDate).getTime() : 0;
+            return timeB - timeA;
+        });
+
+        const html = sortedList.map(repair => {
+            const rtu = rtuList.find(r => r.id === repair.rtuId);
+            const rtuName = rtu ? rtu.name : '알 수 없음 (장비 삭제됨)';
+            
+            let statusClass;
+            switch(repair.status) {
+                case '완료': statusClass = 'text-green-600 bg-green-100'; break;
+                case '진행중': statusClass = 'text-blue-600 bg-blue-100'; break;
+                case '요청': 
+                default: statusClass = 'text-red-600 bg-red-100'; break;
+            }
+            
+            return `
+                <div class="p-4 bg-white rounded-lg shadow-md border hover:border-blue-300 transition duration-150">
+                    <div class="flex justify-between items-start">
+                        <div>
+                            <p class="text-sm text-gray-500">${repair.repairDate} (${repair.engineer})</p>
+                            <h3 class="text-lg font-bold text-gray-900 mt-1">${rtuName}</h3>
+                            <p class="text-sm font-medium ${statusClass} py-1 px-2 rounded-full mt-1">${repair.status}</p>
+                        </div>
+                        <div class="flex flex-col space-y-2 flex-shrink-0 mt-1">
+                            <button onclick="showDetailModal('${repair.id}', 'repair')" class="text-blue-600 hover:text-blue-800 text-sm font-semibold">상세</button>
+                            <button onclick="deleteItem('${repair.id}', 'repair')" class="text-red-600 hover:text-red-800 text-sm font-semibold">삭제</button>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }).join('');
+
+        elements.repairList.innerHTML = html;
+    }
+
+    // --- 삭제 함수 ---
+
+    window.deleteItem = function(id, type) {
+        if (!confirm('정말로 이 항목을 삭제하시겠습니까? 이 작업은 되돌릴 수 없습니다.')) {
+            return;
+        }
+
+        let list, key, renderFunc;
+        let success = false;
+
+        if (type === 'rtu') {
+            const initialLength = rtuList.length;
+            rtuList = rtuList.filter(item => item.id !== id);
+            list = rtuList;
+            success = rtuList.length < initialLength;
+            key = STORAGE_KEYS.RTU;
+            renderFunc = renderRtuList;
+            // 관련 점검/수리 기록도 삭제할 수 있지만, 여기서는 목록만 업데이트
+        } else if (type === 'inspection') {
+            const initialLength = inspectionList.length;
+            inspectionList = inspectionList.filter(item => item.id !== id);
+            list = inspectionList;
+            success = inspectionList.length < initialLength;
+            key = STORAGE_KEYS.INSPECTION;
+            renderFunc = renderInspectionList;
+        } else if (type === 'repair') {
+            const initialLength = repairList.length;
+            repairList = repairList.filter(item => item.id !== id);
+            list = repairList;
+            success = repairList.length < initialLength;
+            key = STORAGE_KEYS.REPAIR;
+            renderFunc = renderRepairList;
+        }
+
+        if (success) {
+            saveList(key, list);
+            renderFunc();
+            updateDashboard();
+            alert('삭제가 완료되었습니다.');
+        } else {
+            alert('삭제에 실패했습니다. 항목을 찾을 수 없습니다.');
+        }
+    }
+
+    // --- 점검/수리 폼 제출 함수 ---
+    elements.inspectionForm.addEventListener('submit', (e) => {
+        e.preventDefault();
         
-        if (link.download !== undefined) {
-            const url = URL.createObjectURL(blob);
-            link.setAttribute('href', url);
-            link.setAttribute('download', filename);
-            link.style.visibility = 'hidden';
-            document.body.appendChild(link);
-            link.click();
-            document.body.removeChild(link);
+        const formData = new FormData(elements.inspectionForm);
+        const inspectionData = Object.fromEntries(formData.entries());
+
+        // ID 할당
+        const newId = 'INSP-' + Date.now();
+        const newInspection = { ...inspectionData, id: newId };
+        
+        inspectionList.push(newInspection);
+        saveList(STORAGE_KEYS.INSPECTION, inspectionList);
+        
+        alert(`RTU ${newInspection.rtuId}의 점검 기록이 등록되었습니다.`);
+        elements.inspectionForm.reset();
+        
+        // RTU 선택 드롭다운은 유지하고, 점검 목록과 대시보드 업데이트
+        populateRtuSelects(); // 드롭다운 초기화 방지
+        renderInspectionList();
+        updateDashboard();
+    });
+
+    elements.repairForm.addEventListener('submit', (e) => {
+        e.preventDefault();
+        
+        const formData = new FormData(elements.repairForm);
+        const repairData = Object.fromEntries(formData.entries());
+
+        // ID 할당
+        const newId = 'REPR-' + Date.now();
+        const newRepair = { ...repairData, id: newId };
+        
+        repairList.push(newRepair);
+        saveList(STORAGE_KEYS.REPAIR, repairList);
+        
+        alert(`RTU ${newRepair.rtuId}의 수리 기록이 등록되었습니다.`);
+        elements.repairForm.reset();
+        
+        // 수리 목록과 대시보드 업데이트
+        populateRtuSelects(); // 드롭다운 초기화 방지
+        renderRepairList();
+        updateDashboard();
+    });
+
+    // --- 이미지 파일 관련 유틸리티 ---
+
+    function readFileAsBase64(file) {
+        return new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onload = () => resolve(reader.result);
+            reader.onerror = error => reject(error);
+            reader.readAsDataURL(file);
+        });
+    }
+
+    window.previewImage = function(event, index) {
+        const file = event.target.files[0];
+        const preview = document.getElementById(`image-preview-${index}`);
+        
+        if (file) {
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                preview.src = e.target.result;
+                preview.style.display = 'inline-block';
+                updateImagePreviewVisibility();
+            }
+            reader.readAsDataURL(file);
+        } else {
+            preview.src = "";
+            preview.style.display = 'none';
+            updateImagePreviewVisibility();
         }
+    }
+    
+    function clearImagePreviews() {
+         document.querySelectorAll('[id^="image-preview-"]').forEach(img => {
+            img.src = "";
+            img.style.display = 'none';
+        });
+        updateImagePreviewVisibility();
+    }
+
+    function updateImagePreviewVisibility() {
+        const hasVisiblePreview = Array.from(document.querySelectorAll('[id^="image-preview-"]')).some(img => img.src && img.src.length > 0);
+        if (hasVisiblePreview) {
+            elements.imagePreviewContainer.classList.remove('hidden');
+        } else {
+            elements.imagePreviewContainer.classList.add('hidden');
+        }
+    }
+
+
+    // --- 모달 관련 함수 ---
+
+    function getRtuDetailHtml(rtu) {
+        if (!rtu) return '<p>RTU 정보를 찾을 수 없습니다.</p>';
+
+        const statusClass = getStatusClass(rtu.status);
+        const imagesHtml = ['image1', 'image2', 'image3'].map((key, index) => 
+            rtu[key] ? `<img src="${rtu[key]}" alt="RTU 사진 ${index+1}" class="w-full h-auto rounded-lg shadow-md max-w-xs object-cover mx-auto"/>` : ''
+        ).join('');
+
+        return `
+            <p><span class="font-semibold">ID:</span> ${rtu.id}</p>
+            <p><span class="font-semibold">등록번호/ID:</span> ${rtu.name}</p>
+            <p><span class="font-semibold">상태:</span> <span class="${statusClass} font-bold">${rtu.status}</span></p>
+            <p><span class="font-semibold">설치 장소/지역:</span> ${rtu.region || '-'}</p>
+            <p><span class="font-semibold">설치 날짜:</span> ${rtu.date || '-'}</p>
+            <p><span class="font-semibold">모델/용량/유닛:</span> ${rtu.model || '-'} / ${rtu.capacity || '-'} / ${rtu.unitType || '-'}</p>
+            <p><span class="font-semibold">냉매/전기 종류:</span> ${rtu.refrigerant || '-'} / ${rtu.electricPhase || '-'}</p>
+            <p><span class="font-semibold">고압 상한:</span> ${rtu.pressureHighLimit || '-'} PSI</p>
+            <p><span class="font-semibold">저압 하한:</span> ${rtu.pressureLowLimit || '-'} PSI</p>
+            ${rtu.notes ? `<div class="p-3 bg-gray-100 rounded-lg mt-3"><span class="font-semibold block mb-1">메모:</span> ${rtu.notes}</div>` : ''}
+            <h4 class="font-bold mt-4 border-t pt-2">등록 사진</h4>
+            <div class="space-y-4 pt-2">${imagesHtml || '<p class="text-gray-500 italic">등록된 사진 없음</p>'}</div>
+            <div class="flex justify-end mt-4">
+                 <button onclick="editRtu('${rtu.id}'); elements.detailModal.classList.add('hidden');" class="bg-indigo-600 text-white font-semibold py-2 px-4 rounded-lg hover:bg-indigo-700 transition duration-150">수정 페이지로 이동</button>
+            </div>
+        `;
+    }
+
+    function getInspectionDetailHtml(inspection) {
+        if (!inspection) return '<p>점검 기록을 찾을 수 없습니다.</p>';
+        
+        const rtu = rtuList.find(r => r.id === inspection.rtuId);
+        const rtuName = rtu ? rtu.name : '알 수 없음 (장비 삭제됨)';
+        
+        let checksHtml = '<ul>';
+        for (let i = 1; i <= INSPECTION_CHECK_LABELS.length; i++) {
+            const key = `check${i}`;
+            checksHtml += `<li><span class="font-semibold">${INSPECTION_CHECK_LABELS[i-1]}:</span> ${inspection[key] || '-'}</li>`;
+        }
+        checksHtml += '</ul>';
+
+        return `
+            <p><span class="font-semibold">대상 RTU:</span> ${rtuName} (${inspection.rtuId})</p>
+            <p><span class="font-semibold">점검 날짜:</span> ${inspection.inspectionDate || '-'}</p>
+            <p><span class="font-semibold">점검자:</span> ${inspection.inspector || '-'}</p>
+            <p><span class="font-semibold">최종 결과:</span> <span class="font-bold">${inspection.result || '-'}</span></p>
+            
+            <h4 class="font-bold mt-4 border-t pt-2">부품 체크 현황</h4>
+            <div class="grid grid-cols-2 gap-2 text-sm pt-2">${checksHtml}</div>
+            
+            <h4 class="font-bold mt-4 border-t pt-2">컴프레서 1 (Comp 1)</h4>
+            <div class="grid grid-cols-3 gap-2 text-sm pt-2">
+                <p><span class="font-semibold">고압:</span> ${inspection.comp1Hp || '-'} PSI</p>
+                <p><span class="font-semibold">저압:</span> ${inspection.comp1Lp || '-'} PSI</p>
+                <p><span class="font-semibold">암페어:</span> ${inspection.comp1Amp || '-'} Amps</p>
+            </div>
+
+            ${(inspection.comp2Hp || inspection.comp2Lp || inspection.comp2Amp) ? `
+            <h4 class="font-bold mt-4 border-t pt-2">컴프레서 2 (Comp 2)</h4>
+            <div class="grid grid-cols-3 gap-2 text-sm pt-2">
+                <p><span class="font-semibold">고압:</span> ${inspection.comp2Hp || '-'} PSI</p>
+                <p><span class="font-semibold">저압:</span> ${inspection.comp2Lp || '-'} PSI</p>
+                <p><span class="font-semibold">암페어:</span> ${inspection.comp2Amp || '-'} Amps</p>
+            </div>
+            ` : ''}
+            
+            <h4 class="font-bold mt-4 border-t pt-2">온도 측정</h4>
+            <div class="grid grid-cols-3 gap-2 text-sm pt-2">
+                <p><span class="font-semibold">과열도:</span> ${inspection.superheat || '-'} ℉</p>
+                <p><span class="font-semibold">과냉도:</span> ${inspection.subcool || '-'} ℉</p>
+                <p><span class="font-semibold">증발 온도:</span> ${inspection.evapTemp || '-'} ℉</p>
+            </div>
+            
+            ${inspection.notes ? `<div class="p-3 bg-gray-100 rounded-lg mt-3"><span class="font-semibold block mb-1">특이사항:</span> ${inspection.notes}</div>` : ''}
+        `;
+    }
+
+    function getRepairDetailHtml(repair) {
+        if (!repair) return '<p>수리 기록을 찾을 수 없습니다.</p>';
+
+        const rtu = rtuList.find(r => r.id === repair.rtuId);
+        const rtuName = rtu ? rtu.name : '알 수 없음 (장비 삭제됨)';
+
+        return `
+            <p><span class="font-semibold">대상 RTU:</span> ${rtuName} (${repair.rtuId})</p>
+            <p><span class="font-semibold">처리 상태:</span> <span class="font-bold">${repair.status || '-'}</span></p>
+            <p><span class="font-semibold">요청/완료 날짜:</span> ${repair.repairDate || '-'}</p>
+            <p><span class="font-semibold">수리 담당자:</span> ${repair.engineer || '-'}</p>
+            
+            <h4 class="font-bold mt-4 border-t pt-2">문제 및 조치 내용</h4>
+            <div class="p-3 bg-gray-100 rounded-lg mt-3">
+                ${repair.issue || '내용 없음'}
+            </div>
+        `;
+    }
+
+    window.showDetailModal = function(id, type) {
+        const modalTitle = document.getElementById('modal-title');
+        const modalContent = document.getElementById('modal-content');
+        
+        currentModalData = { id, type };
+
+        if (type === 'rtu') {
+            const rtu = rtuList.find(r => r.id === id);
+            modalTitle.textContent = `RTU 장비 상세 정보 (${rtu ? rtu.name : id})`;
+            modalContent.innerHTML = getRtuDetailHtml(rtu);
+        } else if (type === 'inspection') {
+            const inspection = inspectionList.find(i => i.id === id);
+            modalTitle.textContent = `RTU 점검 기록 상세 정보 (${inspection ? inspection.inspectionDate : id})`;
+            modalContent.innerHTML = getInspectionDetailHtml(inspection);
+        } else if (type === 'repair') {
+            const repair = repairList.find(r => r.id === id);
+            modalTitle.textContent = `RTU 수리 기록 상세 정보 (${repair ? repair.repairDate : id})`;
+            modalContent.innerHTML = getRepairDetailHtml(repair);
+        } else {
+             modalTitle.textContent = '오류';
+             modalContent.innerHTML = '<p>상세 정보를 불러오는 중 오류가 발생했습니다.</p>';
+        }
+
+        elements.detailModal.classList.remove('hidden');
+    }
+    
+    // --- 데이터 다운로드 함수 (CSV) ---
+    function convertToCSV(arr) {
+        if (arr.length === 0) return '';
+        
+        // key의 순서를 유지하기 위해 첫 번째 객체의 key를 사용
+        const keys = Object.keys(arr[0]);
+        const header = keys.map(key => `"${key}"`).join(','); // 헤더도 큰따옴표로 감쌈
+        
+        const rows = arr.map(item => {
+            return keys.map(key => {
+                let value = item[key];
+                
+                // 값이 null, undefined인 경우 빈 문자열로 처리
+                if (value === null || value === undefined) {
+                    value = '';
+                }
+                
+                // 문자열 내 쉼표, 큰따옴표, 줄 바꿈 방지를 위해 큰따옴표로 감쌈
+                if (typeof value === 'string') {
+                    // 내부의 큰따옴표는 두 개로 이스케이프
+                    const escaped = value.replace(/"/g, '""'); 
+                    return `"${escaped}"`;
+                }
+                return `"${value}"`; // 숫자나 다른 타입도 안전하게 감쌈
+            }).join(',');
+        });
+
+        return [header].concat(rows).join('\n')
+    }
+
+    function downloadCSV(data, filename) {
+        const csvFile = new Blob(["\ufeff", data], {type: 'text/csv;charset=utf-8;'});
+        const downloadLink = document.createElement('a');
+        
+        downloadLink.href = URL.createObjectURL(csvFile);
+        downloadLink.download = filename;
+        
+        document.body.appendChild(downloadLink);
+        downloadLink.click();
+        document.body.removeChild(downloadLink);
     }
 
     function handleDataDownload() {
-        try {
-            // RTU 데이터 다운로드
-            jsonToCsv(rtuList.filter(r => r && r.id), 'rtu_data.csv');
+        let allDataDownloaded = false;
+        
+        if (rtuList.length > 0) {
+            // 이미지(base64) 데이터는 용량이 크므로 제외하고 다운로드
+            const rtuDataForCsv = rtuList.map(r => {
+                const { image1, image2, image3, ...rest } = r;
+                return rest;
+            });
+            downloadCSV(convertToCSV(rtuDataForCsv), 'rtu_list.csv');
+            allDataDownloaded = true;
+        }
 
-            // 점검 데이터 다운로드
-            const inspectionCsvData = inspectionList
-                .filter(i => i && i.id) // 유효한 항목만 필터링
-                .map(item => {
-                    // 부품 체크 항목을 최상위 속성으로 평탄화
-                    const flatItem = { ...item, ...item.checks, ...item.measurements };
-                    delete flatItem.checks;
-                    delete flatItem.measurements;
-                    return flatItem;
-                });
-            jsonToCsv(inspectionCsvData, 'inspection_data.csv');
+        if (inspectionList.length > 0) {
+            downloadCSV(convertToCSV(inspectionList), 'inspection_list.csv');
+            allDataDownloaded = true;
+        }
+        
+        if (repairList.length > 0) {
+            downloadCSV(convertToCSV(repairList), 'repair_list.csv');
+            allDataDownloaded = true;
+        }
 
-            // 수리 데이터 다운로드
-            jsonToCsv(repairList.filter(r => r && r.id), 'repair_data.csv');
-
-            alert("RTU, 점검, 수리 데이터가 각각 CSV 파일로 다운로드되었습니다.");
-        } catch (e) {
-            console.error("다운로드 오류:", e);
-            alert("데이터 다운로드 중 오류가 발생했습니다. 콘솔을 확인해주세요.");
+        if (allDataDownloaded) {
+            alert("데이터 다운로드가 완료되었습니다. (RTU, 점검, 수리 파일)");
+        } else {
+             alert("다운로드할 데이터가 없습니다. 먼저 RTU 장비, 점검, 수리 기록을 등록해 주세요.");
         }
     }
 
-    // --- 기타 유틸리티 ---
-    function getRelatedData(rtuId) {
-        return {
-            // 유효성 검사 추가
-            inspections: inspectionList.filter(i => i && i.rtuId === rtuId).sort((a, b) => new Date(b.inspectionDate) - new Date(a.inspectionDate)),
-            repairs: repairList.filter(r => r && r.rtuId === rtuId).sort((a, b) => new Date(b.repairDate) - new Date(a.repairDate))
-        };
-    }
-
     /* ============================
-       페이지 로드 시 초기화
+       페이지 초기화
        ============================ */
-    
-    document.addEventListener('DOMContentLoaded', () => {
+    window.onload = function() {
         
-        // --- 탭 전환 로직 (DOMContentLoaded 안으로 이동) ---
-        elements.tabButtons.forEach(button => {
-            button.addEventListener('click', () => {
-                const targetTab = button.dataset.tab;
-
-                // 버튼 스타일 변경
-                elements.tabButtons.forEach(btn => btn.classList.remove('tab-active', 'border-blue-500'));
-                button.classList.add('tab-active', 'border-blue-500');
-
-                // 페이지 컨텐츠 전환
-                document.querySelectorAll('.tab-page').forEach(page => {
-                    page.classList.add('hidden');
-                });
-                document.getElementById(targetTab).classList.remove('hidden');
-
-                // 탭에 따른 데이터 갱신
-                if (targetTab === 'dashboard') {
-                    updateDashboard();
-                } else if (targetTab === 'rtu-manage') {
-                    switchRtuMode(rtuMode); // 모드 상태 유지하면서 UI 갱신 (목록 포함)
-                    renderRtuList();
-                } else if (targetTab === 'inspection-manage') {
-                    populateRtuSelects();
-                    renderInspectionList();
-                } else if (targetTab === 'repair-manage') {
-                    populateRtuSelects();
-                    renderRepairList();
-                } else if (targetTab === 'report-page') {
-                    updateReportPage();
-                }
-            });
-        });
-        
-        // 로컬 저장소 데이터 로드 후 초기 대시보드 및 목록 렌더링
+        // 페이지 로드 시 초기 대시보드 및 목록 렌더링
         updateDashboard();
         populateRtuSelects();
         
@@ -1591,8 +1453,8 @@
         // --- 데이터 다운로드 버튼 리스너 ---
         elements.downloadDataBtn.addEventListener('click', handleDataDownload);
 
-        console.warn("데이터는 브라우저의 localStorage에만 저장됩니다. 브라우저를 닫으면 데이터가 유실되지 않지만, 브라우저 데이터를 삭제하면 유실됩니다.");
-    });
+    }
+
   </script>
 </body>
 </html>
