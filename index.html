@@ -3,16 +3,16 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>RTU 관리 시스템 (Firebase v3)</title>
+  <title>RTU 관리 시스템 (Firebase v4)</title>
   <script src="https://cdn.tailwindcss.com"></script>
 
-  <!-- Firebase -->
+  <!-- Firebase SDK -->
   <script src="https://www.gstatic.com/firebasejs/10.12.1/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.1/firebase-firestore-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.1/firebase-storage-compat.js"></script>
 
   <style>
-    body { font-family: 'Inter', sans-serif; background:#f8fafc; }
+    body { background:#f9fafb; font-family: 'Inter', sans-serif; }
     .input { border:1px solid #ccc; border-radius:0.5rem; padding:0.5rem; width:100%; }
     .btn { background:#4f46e5; color:white; padding:0.5rem 1rem; border-radius:0.5rem; }
     .btn:hover { background:#4338ca; }
@@ -20,13 +20,14 @@
   </style>
 </head>
 <body>
-  <div class="max-w-6xl mx-auto p-4 sm:p-8 bg-white shadow-lg rounded-xl mt-6 mb-12">
-    <h1 class="text-3xl font-extrabold text-indigo-700 mb-4">RTU 관리 시스템 (Firebase v3)</h1>
+  <div class="max-w-6xl mx-auto p-4 bg-white shadow-lg rounded-xl mt-6 mb-10">
+    <h1 class="text-3xl font-extrabold text-indigo-700 mb-4">RTU 관리 시스템 (Firebase v4)</h1>
 
     <div class="flex gap-2 mb-6">
       <button onclick="setView('dashboard')" class="btn">대시보드</button>
       <button onclick="setView('register')" class="btn bg-gray-500">장비등록</button>
       <button onclick="setView('inspect')" class="btn bg-gray-500">점검등록</button>
+      <button onclick="setView('repair')" class="btn bg-gray-500">수리등록</button>
       <button onclick="setView('report')" class="btn bg-gray-500">보고서</button>
     </div>
 
@@ -35,12 +36,12 @@
   </div>
 
   <script>
-  // --- Firebase 설정 ---
+  // --- Firebase 초기화 ---
   const firebaseConfig = {
     apiKey: "AIzaSyD6-IKznyhHIH6eGztJOioL0cDQ57MvNvs",
     authDomain: "rtu-system-han.firebaseapp.com",
     projectId: "rtu-system-han",
-    storageBucket: "rtu-system-han.appspot.com", // ✅ 수정 완료 (.appspot.com)
+    storageBucket: "rtu-system-han.appspot.com",
     messagingSenderId: "960060003353",
     appId: "1:960060003353:web:06932b3da09391c9b0c688",
     measurementId: "G-C2MDK46FFF"
@@ -65,7 +66,7 @@
   // --- Firestore 저장/로드 ---
   async function saveState() {
     await dbCloud.collection('rtu_system').doc('main').set(db);
-    showMsg('☁️ 데이터 저장 완료');
+    showMsg('☁️ 클라우드 저장 완료');
   }
   async function loadState() {
     const snap = await dbCloud.collection('rtu_system').doc('main').get();
@@ -73,10 +74,10 @@
     setView('dashboard');
   }
 
-  // --- 날짜 기본값 설정 ---
+  // --- 날짜 기본값 자동설정 ---
   document.addEventListener('DOMContentLoaded', () => {
     const today = new Date().toISOString().split('T')[0];
-    document.querySelectorAll('input[type="date"]').forEach(input => input.value = today);
+    document.querySelectorAll('input[type="date"]').forEach(i=>i.value=today);
   });
 
   // --- 화면 전환 ---
@@ -85,6 +86,7 @@
     if (name==='dashboard') c.innerHTML = renderDashboard();
     if (name==='register') c.innerHTML = renderRegister();
     if (name==='inspect') c.innerHTML = renderInspect();
+    if (name==='repair') c.innerHTML = renderRepair();
     if (name==='report') c.innerHTML = renderReport();
   }
 
@@ -94,80 +96,94 @@
       <tr class="border-b">
         <td class="p-2">${r.rtuId}</td>
         <td>${r.model}</td>
+        <td>${r.manufacturer}</td>
         <td>${r.location}</td>
         <td>${r.status}</td>
         <td><button onclick="editUnit(${i})" class="text-indigo-600">수정</button></td>
-      </tr>`).join('') || '<tr><td colspan="5" class="p-3 text-center text-gray-400">등록된 장비가 없습니다</td></tr>';
-    return `<h2 class="text-2xl font-bold mb-3">장비 목록</h2>
-    <table class="w-full text-sm border"><thead><tr class="bg-gray-100"><th>RTU ID</th><th>모델</th><th>위치</th><th>상태</th><th>관리</th></tr></thead><tbody>${rows}</tbody></table>`;
+      </tr>`).join('') || '<tr><td colspan="6" class="p-3 text-center text-gray-400">등록된 장비가 없습니다</td></tr>';
+    return `
+      <h2 class="text-2xl font-bold mb-3">장비 목록</h2>
+      <table class="w-full text-sm border">
+        <thead><tr class="bg-gray-100"><th>RTU ID</th><th>모델</th><th>제조사</th><th>위치</th><th>상태</th><th>관리</th></tr></thead>
+        <tbody>${rows}</tbody>
+      </table>`;
   }
 
   // --- 장비등록 ---
   function renderRegister() {
     const u = editIndex !== null ? db.rtu_units[editIndex] : {};
     return `
-    <h2 class="text-2xl font-bold mb-3">${editIndex!==null?'장비 수정':'장비 등록'}</h2>
-    <form onsubmit="saveRtu(event)" class="space-y-2">
-      <input id="rtuId" class="input" placeholder="RTU ID" value="${u?.rtuId||''}" ${editIndex!==null?'readonly':''} required>
-      <input id="model" class="input" placeholder="모델" value="${u?.model||''}" required>
-      <input id="location" class="input" placeholder="위치" value="${u?.location||''}" required>
-      <select id="status" class="input">
-        <option ${u?.status==='정상'?'selected':''}>정상</option>
-        <option ${u?.status==='점검필요'?'selected':''}>점검필요</option>
-        <option ${u?.status==='불량(수리)'?'selected':''}>불량(수리)</option>
-      </select>
-      <textarea id="memo" class="input" placeholder="메모">${u?.memo||''}</textarea>
-      <button class="btn w-full">저장</button>
-    </form>`;
+      <h2 class="text-2xl font-bold mb-3">${editIndex!==null?'장비 수정':'장비 등록'}</h2>
+      <form onsubmit="saveRtu(event)" class="space-y-2">
+        <input id="rtuId" class="input" placeholder="RTU ID" value="${u?.rtuId||''}" ${editIndex!==null?'readonly':''} required>
+        <input id="model" class="input" placeholder="모델명" value="${u?.model||''}" required>
+        <input id="manufacturer" class="input" placeholder="제조사" value="${u?.manufacturer||''}">
+        <input id="refrigerant" class="input" placeholder="냉매 종류 (예: R-410A)">
+        <input id="capacity" class="input" placeholder="용량 (예: 15RT)">
+        <input type="date" id="installDate" class="input">
+        <input id="location" class="input" placeholder="설치 위치" value="${u?.location||''}">
+        <select id="status" class="input">
+          <option ${u?.status==='정상'?'selected':''}>정상</option>
+          <option ${u?.status==='점검필요'?'selected':''}>점검필요</option>
+          <option ${u?.status==='불량(수리)'?'selected':''}>불량(수리)</option>
+        </select>
+        <textarea id="memo" class="input" placeholder="비고">${u?.memo||''}</textarea>
+        <button class="btn w-full">저장</button>
+      </form>`;
   }
 
-  async function saveRtu(e) {
+  async function saveRtu(e){
     e.preventDefault();
     const id = rtuId.value.trim();
-    if (!id) return showMsg("RTU ID 필수","error");
-    const obj = { rtuId:id, model:model.value, location:location.value, status:status.value, memo:memo.value };
+    if(!id) return showMsg("RTU ID 필수","error");
+    const obj = {
+      rtuId:id, model:model.value, manufacturer:manufacturer.value,
+      refrigerant:refrigerant.value, capacity:capacity.value,
+      installDate:installDate.value, location:location.value,
+      status:status.value, memo:memo.value
+    };
     const idx = db.rtu_units.findIndex(r=>r.rtuId===id);
-    if (idx>=0) db.rtu_units[idx]=obj; else db.rtu_units.push(obj);
+    if(idx>=0) db.rtu_units[idx]=obj; else db.rtu_units.push(obj);
     editIndex=null;
     await saveState(); setView('dashboard');
   }
   function editUnit(i){ editIndex=i; setView('register'); }
 
   // --- 점검등록 ---
-  function renderInspect() {
+  function renderInspect(){
     const opts=db.rtu_units.map((u,i)=>`<option value="${i}">${u.rtuId}</option>`).join('');
     return `
-    <h2 class="text-2xl font-bold mb-3">점검 등록</h2>
-    <form onsubmit="saveInspect(event)" class="space-y-2">
-      <select id="i_unit" class="input" required><option value="">RTU 선택</option>${opts}</select>
-      <input id="i_inspector" class="input" placeholder="점검자" required>
-      <input type="date" id="i_date" class="input" required>
-      <div class="grid grid-cols-2 gap-2">
-        <input id="i_p1h" class="input" placeholder="컴프1 고압 (psi)">
-        <input id="i_p1l" class="input" placeholder="컴프1 저압 (psi)">
-        <input id="i_p2h" class="input" placeholder="컴프2 고압 (psi)">
-        <input id="i_p2l" class="input" placeholder="컴프2 저압 (psi)">
-      </div>
-      <div class="grid grid-cols-2 gap-2">
-        <input id="i_tin" class="input" placeholder="실내온도 (°F)">
-        <input id="i_tout" class="input" placeholder="실외온도 (°F)">
-        <input id="i_tcon" class="input" placeholder="응축기온도 (°F)">
-        <input id="i_teva" class="input" placeholder="증발기온도 (°F)">
-      </div>
-      <div class="grid grid-cols-3 gap-2">
-        <input id="i_amp" class="input" placeholder="전류 (A)">
-        <input id="i_volt" class="input" placeholder="전압 (V)">
-        <input id="i_kw" class="input" placeholder="전력 (kW)">
-      </div>
-      <select id="i_state" class="input">
-        <option>정상</option><option>점검필요</option><option>불량(수리)</option>
-      </select>
-      <textarea id="i_notes" class="input" placeholder="비고"></textarea>
-      <label class="block text-sm text-gray-600">현장 이미지 (최대 3장)</label>
-      <input type="file" id="i_imgs" class="input" multiple accept="image/*">
-      <div id="imgPreview" class="flex flex-wrap"></div>
-      <button class="btn w-full">저장</button>
-    </form>`;
+      <h2 class="text-2xl font-bold mb-3">점검 등록</h2>
+      <form onsubmit="saveInspect(event)" class="space-y-2">
+        <select id="i_unit" class="input" required><option value="">RTU 선택</option>${opts}</select>
+        <input id="i_inspector" class="input" placeholder="점검자" required>
+        <input type="date" id="i_date" class="input">
+        <div class="grid grid-cols-2 gap-2">
+          <input id="i_p1h" class="input" placeholder="컴프1 고압 (psi)">
+          <input id="i_p1l" class="input" placeholder="컴프1 저압 (psi)">
+          <input id="i_p2h" class="input" placeholder="컴프2 고압 (psi)">
+          <input id="i_p2l" class="input" placeholder="컴프2 저압 (psi)">
+        </div>
+        <div class="grid grid-cols-2 gap-2">
+          <input id="i_tin" class="input" placeholder="실내온도 (°F)">
+          <input id="i_tout" class="input" placeholder="실외온도 (°F)">
+          <input id="i_tcon" class="input" placeholder="응축기온도 (°F)">
+          <input id="i_teva" class="input" placeholder="증발기온도 (°F)">
+        </div>
+        <div class="grid grid-cols-3 gap-2">
+          <input id="i_amp" class="input" placeholder="전류 (A)">
+          <input id="i_volt" class="input" placeholder="전압 (V)">
+          <input id="i_kw" class="input" placeholder="전력 (kW)">
+        </div>
+        <select id="i_state" class="input">
+          <option>정상</option><option>점검필요</option><option>불량(수리)</option>
+        </select>
+        <textarea id="i_notes" class="input" placeholder="비고"></textarea>
+        <label class="block text-sm text-gray-600">현장 이미지 (최대 3장)</label>
+        <input type="file" id="i_imgs" class="input" multiple accept="image/*">
+        <div id="imgPreview" class="flex flex-wrap"></div>
+        <button class="btn w-full">저장</button>
+      </form>`;
   }
 
   async function saveInspect(e){
@@ -182,7 +198,6 @@
       amp:i_amp.value, volt:i_volt.value, kw:i_kw.value,
       state:i_state.value, notes:i_notes.value, images:[]
     };
-
     const files = Array.from(i_imgs.files);
     for (let file of files) {
       const path = `rtu_images/${u.rtuId}/${Date.now()}_${file.name}`;
@@ -191,16 +206,44 @@
       const url = await ref.getDownloadURL();
       insp.images.push(url);
     }
-
     db.inspections.push(insp);
     await saveState();
     setView('report');
   }
 
+  // --- 수리등록 ---
+  function renderRepair(){
+    const opts=db.rtu_units.map((u,i)=>`<option value="${i}">${u.rtuId}</option>`).join('');
+    return `
+      <h2 class="text-2xl font-bold mb-3">수리 등록</h2>
+      <form onsubmit="saveRepair(event)" class="space-y-2">
+        <select id="r_unit" class="input" required><option value="">RTU 선택</option>${opts}</select>
+        <input type="date" id="r_date" class="input">
+        <input id="r_part" class="input" placeholder="수리 부품">
+        <input id="r_cost" class="input" placeholder="비용">
+        <input id="r_person" class="input" placeholder="담당자">
+        <select id="r_state" class="input"><option>진행중</option><option>완료</option></select>
+        <textarea id="r_notes" class="input" placeholder="수리 내용"></textarea>
+        <button class="btn w-full">저장</button>
+      </form>`;
+  }
+
+  async function saveRepair(e){
+    e.preventDefault();
+    const u=db.rtu_units[r_unit.value];
+    if(!u) return showMsg("RTU 선택 필요","error");
+    const rep={
+      rtuId:u.rtuId, date:r_date.value, part:r_part.value, cost:r_cost.value,
+      person:r_person.value, state:r_state.value, notes:r_notes.value
+    };
+    db.repairs.push(rep);
+    await saveState();
+    setView('report');
+  }
+
   // --- 보고서 ---
-  function renderReport() {
-    if(!db.inspections.length) return '<p class="text-gray-500">점검 내역 없음</p>';
-    return db.inspections.slice(-10).reverse().map(i=>`
+  function renderReport(){
+    const insp = db.inspections.map(i=>`
       <div class="border p-3 rounded mb-3 bg-gray-50">
         <h3 class="font-bold text-indigo-700">${i.rtuId} (${i.date})</h3>
         <p class="text-sm text-gray-600">${i.inspector} / 상태: ${i.state}</p>
@@ -209,8 +252,18 @@
         <p class="text-xs">전기값: ${i.amp}A / ${i.volt}V / ${i.kw}kW</p>
         <p class="text-xs text-gray-600">${i.notes||''}</p>
         <div class="flex flex-wrap mt-2">${(i.images||[]).map(u=>`<img src="${u}" class="preview">`).join('')}</div>
-      </div>
-    `).join('');
+      </div>`).join('');
+
+    const rep = db.repairs.map(r=>`
+      <div class="border p-3 rounded mb-3 bg-gray-50">
+        <h3 class="font-bold text-green-700">${r.rtuId} (${r.date})</h3>
+        <p class="text-sm text-gray-600">담당자: ${r.person} / 상태: ${r.state}</p>
+        <p class="text-xs">부품: ${r.part} / 비용: ${r.cost}</p>
+        <p class="text-xs text-gray-600">${r.notes||''}</p>
+      </div>`).join('');
+
+    return `<h2 class="text-2xl font-bold mb-2">점검 내역</h2>${insp || '<p>점검 내역 없음</p>'}
+            <h2 class="text-2xl font-bold mt-6 mb-2">수리 내역</h2>${rep || '<p>수리 내역 없음</p>'}`;
   }
 
   document.addEventListener('DOMContentLoaded', loadState);
