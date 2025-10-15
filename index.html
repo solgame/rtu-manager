@@ -3,30 +3,33 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>RTU 관리 시스템 (Firebase CDN 완전판)</title>
+  <title>RTU 관리 시스템 (Firebase 확장판)</title>
   <script src="https://cdn.tailwindcss.com"></script>
 
-  <!-- ✅ Firebase CDN SDK 로드 -->
+  <!-- ✅ Firebase CDN SDK -->
   <script src="https://www.gstatic.com/firebasejs/10.12.1/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.1/firebase-firestore-compat.js"></script>
 
   <style>
     body { font-family: 'Inter', sans-serif; background-color: #f3f4f6; }
     .input { border:1px solid #ccc; border-radius:0.5rem; padding:0.5rem; width:100%; }
+    .btn { background-color:#4f46e5; color:white; padding:0.5rem 1rem; border-radius:0.5rem; }
+    .btn:hover { background-color:#4338ca; }
   </style>
 </head>
 <body>
   <div id="app" class="min-h-screen p-4 sm:p-8">
     <div class="max-w-6xl mx-auto bg-white shadow-2xl rounded-xl p-6 sm:p-10">
       <h1 class="text-3xl sm:text-4xl font-extrabold text-indigo-700 mb-2">
-        RTU 관리 시스템 (Firebase CDN)
+        RTU 관리 시스템 (Firebase 확장판)
       </h1>
       <p class="text-gray-600 mb-6 flex justify-between items-center">
-        <span>클라우드 데이터 저장 중 ☁️</span>
-        <button onclick="exportAllData()" 
-          class="bg-gray-200 text-gray-700 text-sm py-1 px-3 rounded-lg hover:bg-gray-300 transition">
-          CSV 내보내기
-        </button>
+        <span>데이터 클라우드 저장 중 ☁️</span>
+        <div class="flex gap-2 items-center">
+          <input type="file" id="fileInput" class="hidden" accept=".csv,.json" onchange="importCSVFile(event)">
+          <button onclick="exportAllData()" class="bg-gray-200 text-gray-700 text-sm py-1 px-3 rounded-lg hover:bg-gray-300 transition">CSV 내보내기</button>
+          <button onclick="document.getElementById('fileInput').click()" class="bg-gray-200 text-gray-700 text-sm py-1 px-3 rounded-lg hover:bg-gray-300 transition">CSV 불러오기</button>
+        </div>
       </p>
 
       <div id="messageBox" class="hidden p-3 mb-4 rounded-lg text-sm transition duration-300" role="alert"></div>
@@ -34,16 +37,11 @@
       <!-- 메뉴 -->
       <div class="mb-8 border-b border-gray-200 pb-4">
         <nav class="flex flex-wrap gap-2 sm:gap-4">
-          <button onclick="setView('dashboard')" id="menu-dashboard"
-            class="px-4 py-2 text-sm font-semibold rounded-lg bg-indigo-600 text-white shadow-md">대시보드</button>
-          <button onclick="setView('register')" id="menu-register"
-            class="px-4 py-2 text-sm font-semibold rounded-lg text-gray-600 hover:bg-indigo-50 hover:text-indigo-600">장비 등록</button>
-          <button onclick="setView('inspect')" id="menu-inspect"
-            class="px-4 py-2 text-sm font-semibold rounded-lg text-gray-600 hover:bg-indigo-50 hover:text-indigo-600">성능 점검</button>
-          <button onclick="setView('repair')" id="menu-repair"
-            class="px-4 py-2 text-sm font-semibold rounded-lg text-gray-600 hover:bg-indigo-50 hover:text-indigo-600">수리 내역</button>
-          <button onclick="setView('report')" id="menu-report"
-            class="px-4 py-2 text-sm font-semibold rounded-lg text-gray-600 hover:bg-indigo-50 hover:text-indigo-600">보고서</button>
+          <button onclick="setView('dashboard')" id="menu-dashboard" class="px-4 py-2 text-sm font-semibold rounded-lg bg-indigo-600 text-white shadow-md">대시보드</button>
+          <button onclick="setView('register')" id="menu-register" class="px-4 py-2 text-sm font-semibold rounded-lg text-gray-600 hover:bg-indigo-50 hover:text-indigo-600">장비 등록</button>
+          <button onclick="setView('inspect')" id="menu-inspect" class="px-4 py-2 text-sm font-semibold rounded-lg text-gray-600 hover:bg-indigo-50 hover:text-indigo-600">성능 점검</button>
+          <button onclick="setView('repair')" id="menu-repair" class="px-4 py-2 text-sm font-semibold rounded-lg text-gray-600 hover:bg-indigo-50 hover:text-indigo-600">수리 내역</button>
+          <button onclick="setView('report')" id="menu-report" class="px-4 py-2 text-sm font-semibold rounded-lg text-gray-600 hover:bg-indigo-50 hover:text-indigo-600">보고서</button>
         </nav>
       </div>
 
@@ -51,9 +49,8 @@
     </div>
   </div>
 
-  <!-- ✅ 메인 스크립트 -->
   <script>
-    // 🔹 Firebase 초기화 (당신의 프로젝트 설정값)
+    // --- Firebase 설정 ---
     const firebaseConfig = {
       apiKey: "AIzaSyD6-IKznyhHIH6eGztJOioL0cDQ57MvNvs",
       authDomain: "rtu-system-han.firebaseapp.com",
@@ -66,40 +63,34 @@
     firebase.initializeApp(firebaseConfig);
     const dbCloud = firebase.firestore();
 
-    // --- 데이터 구조 ---
     let db = { rtu_units: [], inspections: [], repairs: [] };
+
     const STATUS_MAP = {
       '1': { text: '정상 / Normal', class: 'bg-green-100 text-green-700' },
       '2': { text: '경고 / Warning', class: 'bg-yellow-100 text-yellow-700' },
       '0': { text: '오프라인 / Offline', class: 'bg-red-100 text-red-700' }
     };
 
-    // --- Firestore 저장 ---
     async function saveDB() {
       await dbCloud.collection("rtu_system").doc("main").set(db);
       showMessage('☁️ 클라우드 저장 완료', 'success');
     }
 
-    // --- Firestore 불러오기 ---
     async function loadDB() {
       const snap = await dbCloud.collection("rtu_system").doc("main").get();
       if (snap.exists) db = snap.data();
       setView('dashboard');
     }
 
-    // --- 메시지 표시 ---
     function showMessage(msg, type='info') {
       const el = document.getElementById('messageBox');
       el.textContent = msg;
       el.className = 'p-3 mb-4 rounded-lg text-sm ' +
-        (type==='error' ? 'bg-red-100 text-red-700' :
-         type==='success' ? 'bg-green-100 text-green-700' :
-         'bg-blue-100 text-blue-700');
+        (type==='error' ? 'bg-red-100 text-red-700' : type==='success' ? 'bg-green-100 text-green-700' : 'bg-blue-100 text-blue-700');
       el.classList.remove('hidden');
       setTimeout(()=>el.classList.add('hidden'), 4000);
     }
 
-    // --- View 제어 ---
     function setView(name) {
       document.querySelectorAll('nav button').forEach(b=>b.classList.remove('bg-indigo-600','text-white'));
       document.getElementById('menu-'+name).classList.add('bg-indigo-600','text-white');
@@ -121,56 +112,81 @@
           <td class="p-2">${u.model}</td>
           <td class="p-2">${u.location}</td>
           <td class="p-2"><span class="px-2 py-0.5 rounded ${s.class}">${s.text}</span></td>
+          <td class="text-right p-2"><button class="text-blue-600" onclick="editUnit(${i})">수정</button></td>
         </tr>`;
-      }).join('') || `<tr><td colspan="4" class="text-center text-gray-500 p-3">등록된 장비 없음</td></tr>`;
+      }).join('') || `<tr><td colspan="5" class="text-center text-gray-500 p-3">등록된 장비 없음</td></tr>`;
       return `
         <h2 class="text-2xl font-bold mb-4">대시보드</h2>
         <p class="mb-2 text-gray-600">총 장비 수: <b>${total}</b></p>
         <table class="w-full border">
-          <thead class="bg-gray-100"><tr><th class="p-2">RTU ID</th><th>모델</th><th>위치</th><th>상태</th></tr></thead>
+          <thead class="bg-gray-100"><tr><th class="p-2">RTU ID</th><th>모델</th><th>위치</th><th>상태</th><th>관리</th></tr></thead>
           <tbody>${rows}</tbody>
         </table>`;
     }
 
-    // --- 장비 등록 ---
+    // --- 장비 등록 및 수정 ---
+    let editIndex = null;
     function renderRegister(){
+      const u = editIndex !== null ? db.rtu_units[editIndex] : {};
       return `
-      <h2 class="text-2xl font-bold mb-4">장비 등록</h2>
+      <h2 class="text-2xl font-bold mb-4">${editIndex !== null ? '장비 수정' : '장비 등록'}</h2>
       <form onsubmit="saveRegister(event)" class="space-y-2 max-w-xl">
-        <input id="r_rtuId" class="input" placeholder="RTU ID" required>
-        <input id="r_model" class="input" placeholder="모델" required>
-        <input id="r_capacity" class="input" placeholder="용량" required>
-        <input id="r_location" class="input" placeholder="위치" required>
+        <input id="r_rtuId" class="input" placeholder="RTU ID" value="${u?.rtuId||''}" ${editIndex!==null?'readonly':''} required>
+        <input id="r_model" class="input" placeholder="모델" value="${u?.model||''}" required>
+        <input id="r_capacity" class="input" placeholder="용량" value="${u?.capacity||''}" required>
+        <input id="r_location" class="input" placeholder="위치" value="${u?.location||''}" required>
         <select id="r_status" class="input">
-          <option value="1">정상</option><option value="2">경고</option><option value="0">오프라인</option>
+          <option value="1" ${u?.statusCode==='1'?'selected':''}>정상</option>
+          <option value="2" ${u?.statusCode==='2'?'selected':''}>경고</option>
+          <option value="0" ${u?.statusCode==='0'?'selected':''}>오프라인</option>
         </select>
-        <textarea id="r_memo" class="input" placeholder="메모"></textarea>
-        <button class="w-full bg-indigo-600 text-white py-2 rounded">저장</button>
+        <textarea id="r_memo" class="input" placeholder="메모">${u?.memo||''}</textarea>
+        <button class="w-full bg-indigo-600 text-white py-2 rounded">${editIndex !== null ? '수정 저장' : '등록'}</button>
       </form>`;
     }
 
     async function saveRegister(e){
       e.preventDefault();
-      db.rtu_units.push({
-        rtuId:r_rtuId.value, model:r_model.value, capacity:r_capacity.value,
-        location:r_location.value, statusCode:r_status.value, memo:r_memo.value,
-        registrationDate:new Date().toISOString()
-      });
+      const id = r_rtuId.value.trim();
+      if (!id) return showMessage("RTU ID는 필수입니다.", "error");
+      const existIndex = db.rtu_units.findIndex(u=>u.rtuId===id);
+
+      const newUnit = {
+        rtuId:id, model:r_model.value, capacity:r_capacity.value, location:r_location.value,
+        statusCode:r_status.value, memo:r_memo.value, registrationDate:new Date().toISOString()
+      };
+
+      if (editIndex !== null) db.rtu_units[editIndex] = newUnit;
+      else {
+        if (existIndex >= 0) return showMessage("같은 RTU ID가 이미 존재합니다.", "error");
+        db.rtu_units.push(newUnit);
+      }
+
+      editIndex = null;
       await saveDB();
       setView('dashboard');
     }
 
-    // --- 성능 점검 ---
+    function editUnit(i){
+      editIndex = i;
+      setView('register');
+    }
+
+    // --- 성능 점검 (상세 항목 포함) ---
     function renderInspect(){
       const opts=db.rtu_units.map((u,i)=>`<option value="${i}">${u.rtuId} (${u.location})</option>`).join('');
       return `
       <h2 class="text-2xl font-bold mb-4">성능 점검</h2>
       <form onsubmit="saveInspect(event)" class="space-y-2 max-w-xl">
         <select id="i_unit" required class="input"><option value="">RTU 선택</option>${opts}</select>
-        <input required id="i_inspector" placeholder="점검자" class="input" />
-        <input required type="date" id="i_date" class="input" />
-        <input required id="i_sh" placeholder="과열도 (SH)" class="input" />
-        <input required id="i_sc" placeholder="과냉도 (SC)" class="input" />
+        <input id="i_inspector" placeholder="점검자" class="input" required>
+        <input type="date" id="i_date" class="input" required>
+        <input id="i_sh" placeholder="과열도 (SH)" class="input">
+        <input id="i_sc" placeholder="과냉도 (SC)" class="input">
+        <input id="i_pressure" placeholder="압력" class="input">
+        <input id="i_temp" placeholder="온도" class="input">
+        <input id="i_voltage" placeholder="전압" class="input">
+        <input id="i_current" placeholder="전류" class="input">
         <textarea id="i_notes" placeholder="특이사항" class="input"></textarea>
         <button class="w-full bg-indigo-600 text-white py-2 rounded">저장</button>
       </form>`;
@@ -181,13 +197,15 @@
       const u=db.rtu_units[i_unit.value];
       db.inspections.push({
         rtuId:u.rtuId, inspector:i_inspector.value, date:i_date.value,
-        sh:i_sh.value, sc:i_sc.value, notes:i_notes.value
+        sh:i_sh.value, sc:i_sc.value, pressure:i_pressure.value,
+        temp:i_temp.value, voltage:i_voltage.value, current:i_current.value,
+        notes:i_notes.value
       });
       await saveDB();
       setView('dashboard');
     }
 
-    // --- 수리 내역 ---
+    // --- 수리 내역 / 보고서 (이전 버전 동일) ---
     function renderRepair(){
       const opts=db.rtu_units.map((u,i)=>`<option value="${i}">${u.rtuId} (${u.location})</option>`).join('');
       return `
@@ -198,9 +216,7 @@
         <input type="date" id="rep_date" class="input" required />
         <input id="rep_part" placeholder="부품" class="input" />
         <textarea id="rep_content" placeholder="내용" class="input"></textarea>
-        <select id="rep_status" class="input">
-          <option value="진행중">진행중</option><option value="완료">완료</option>
-        </select>
+        <select id="rep_status" class="input"><option value="진행중">진행중</option><option value="완료">완료</option></select>
         <button class="w-full bg-indigo-600 text-white py-2 rounded">저장</button>
       </form>`;
     }
@@ -216,13 +232,13 @@
       setView('dashboard');
     }
 
-    // --- 보고서 ---
     function renderReport(){
       const insp=db.inspections.slice(-5).reverse().map(i=>`
         <div class="p-2 border rounded bg-white">
           <p class="font-semibold text-indigo-600">${i.rtuId}</p>
           <p class="text-sm">${i.date} / ${i.inspector}</p>
-          <p class="text-xs text-gray-600">SH:${i.sh} / SC:${i.sc}</p>
+          <p class="text-xs text-gray-600">압력:${i.pressure||'-'} / 온도:${i.temp||'-'} / 전압:${i.voltage||'-'} / 전류:${i.current||'-'}</p>
+          <p class="text-xs text-gray-600">SH:${i.sh||'-'} / SC:${i.sc||'-'}</p>
           <p class="text-xs text-red-500">${i.notes||''}</p>
         </div>`).join('')||'<p>점검 없음</p>';
       const rep=db.repairs.slice(-5).reverse().map(r=>`
@@ -232,21 +248,32 @@
           <p class="text-xs">${r.status}</p>
           <p class="text-xs">${r.content||''}</p>
         </div>`).join('')||'<p>수리 없음</p>';
-      return `
-      <h2 class="text-2xl font-bold mb-4">보고서</h2>
-      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <div><h3 class="font-bold mb-2">점검</h3>${insp}</div>
-        <div><h3 class="font-bold mb-2">수리</h3>${rep}</div>
-      </div>`;
+      return `<h2 class="text-2xl font-bold mb-4">보고서</h2>
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4"><div><h3 class="font-bold mb-2">점검</h3>${insp}</div><div><h3 class="font-bold mb-2">수리</h3>${rep}</div></div>`;
     }
 
-    // --- CSV 내보내기 ---
+    // --- CSV 내보내기/불러오기 ---
     function exportAllData(){
       const blob=new Blob([JSON.stringify(db,null,2)],{type:'application/json'});
       const a=document.createElement('a');
       a.href=URL.createObjectURL(blob);
       a.download='rtu_data.json';
       a.click();
+    }
+
+    async function importCSVFile(e){
+      const file = e.target.files[0];
+      if (!file) return;
+      const text = await file.text();
+      try {
+        const imported = JSON.parse(text);
+        db = imported;
+        await saveDB();
+        showMessage('CSV/JSON 불러오기 완료', 'success');
+        setView('dashboard');
+      } catch (err) {
+        showMessage('파일 형식이 올바르지 않습니다.', 'error');
+      }
     }
 
     document.addEventListener('DOMContentLoaded', loadDB);
