@@ -1,272 +1,615 @@
 <!DOCTYPE html>
 <html lang="ko">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>RTU 관리 시스템 (Firebase v4)</title>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>RTU 관리 시스템 (Firebase v5)</title>
   <script src="https://cdn.tailwindcss.com"></script>
 
-  <!-- Firebase SDK -->
+  <!-- Firebase compat SDKs -->
   <script src="https://www.gstatic.com/firebasejs/10.12.1/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.1/firebase-firestore-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.1/firebase-storage-compat.js"></script>
 
   <style>
-    body { background:#f9fafb; font-family: 'Inter', sans-serif; }
-    .input { border:1px solid #ccc; border-radius:0.5rem; padding:0.5rem; width:100%; }
-    .btn { background:#4f46e5; color:white; padding:0.5rem 1rem; border-radius:0.5rem; }
-    .btn:hover { background:#4338ca; }
-    img.preview { width:90px; height:90px; object-fit:cover; border-radius:0.5rem; margin:4px; border:1px solid #ddd; }
+    body { font-family: Inter, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; background:#f3f4f6; }
+    .thumb { width:96px; height:72px; object-fit:cover; border-radius:6px; border:1px solid #e5e7eb; }
+    .input { border:1px solid #d1d5db; padding:0.5rem; border-radius:0.5rem; width:100%; }
+    .btn { background:#4f46e5; color:white; padding:.5rem 1rem; border-radius:.5rem; }
+    .btn-ghost { background:#f3f4f6; color:#374151; padding:.5rem 1rem; border-radius:.5rem; border:1px solid #e5e7eb; }
+    .nav-active { background:#4f46e5; color:white; }
+    .card { background:#fff; border-radius:.5rem; padding:1rem; box-shadow: 0 6px 18px rgba(15,23,42,0.06); }
   </style>
 </head>
-<body>
-  <div class="max-w-6xl mx-auto p-4 bg-white shadow-lg rounded-xl mt-6 mb-10">
-    <h1 class="text-3xl font-extrabold text-indigo-700 mb-4">RTU 관리 시스템 (Firebase v4)</h1>
+<body class="min-h-screen p-6">
+  <div class="max-w-6xl mx-auto">
+    <header class="mb-6 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+      <h1 class="text-2xl font-extrabold text-indigo-700">RTU 관리 시스템 (Firebase v5)</h1>
+      <div class="flex gap-2">
+        <button id="nav-dashboard" class="btn nav-active" data-view="dashboard">대시보드</button>
+        <button id="nav-register" class="btn-ghost" data-view="register">장비등록</button>
+        <button id="nav-inspect" class="btn-ghost" data-view="inspect">점검등록</button>
+        <button id="nav-repair" class="btn-ghost" data-view="repair">수리등록</button>
+        <button id="nav-report" class="btn-ghost" data-view="report">보고서</button>
+      </div>
+    </header>
 
-    <div class="flex gap-2 mb-6">
-      <button onclick="setView('dashboard')" class="btn">대시보드</button>
-      <button onclick="setView('register')" class="btn bg-gray-500">장비등록</button>
-      <button onclick="setView('inspect')" class="btn bg-gray-500">점검등록</button>
-      <button onclick="setView('repair')" class="btn bg-gray-500">수리등록</button>
-      <button onclick="setView('report')" class="btn bg-gray-500">보고서</button>
-    </div>
+    <div id="messageBox" class="hidden mb-4 p-3 rounded text-sm"></div>
 
-    <div id="messageBox" class="hidden mb-4 p-3 rounded"></div>
-    <div id="viewContainer"></div>
+    <main id="mainArea" class="space-y-6">
+      <!-- Views rendered here -->
+    </main>
   </div>
 
-  <script>
-  // --- Firebase 초기화 ---
-  const firebaseConfig = {
-    apiKey: "AIzaSyD6-IKznyhHIH6eGztJOioL0cDQ57MvNvs",
-    authDomain: "rtu-system-han.firebaseapp.com",
-    projectId: "rtu-system-han",
-    storageBucket: "rtu-system-han.appspot.com",
-    messagingSenderId: "960060003353",
-    appId: "1:960060003353:web:06932b3da09391c9b0c688",
-    measurementId: "G-C2MDK46FFF"
-  };
-  firebase.initializeApp(firebaseConfig);
-  const dbCloud = firebase.firestore();
-  const storage = firebase.storage();
+<script>
+/* ========================
+   Firebase 초기화
+   ======================== */
+const firebaseConfig = {
+  apiKey: "AIzaSyD6-IKznyhHIH6eGztJOioL0cDQ57MvNvs",
+  authDomain: "rtu-system-han.firebaseapp.com",
+  projectId: "rtu-system-han",
+  storageBucket: "rtu-system-han.appspot.com",
+  messagingSenderId: "960060003353",
+  appId: "1:960060003353:web:06932b3da09391c9b0c688",
+  measurementId: "G-C2MDK46FFF"
+};
+firebase.initializeApp(firebaseConfig);
+const db = firebase.firestore();
+const storage = firebase.storage();
+const DOC = db.collection('rtu_system').doc('main');
 
-  let db = { rtu_units: [], inspections: [], repairs: [] };
-  let editIndex = null;
+let state = { rtu_units: [], inspections: [], repairs: [] };
 
-  // --- 메시지 표시 ---
-  function showMsg(msg, type='info') {
-    const el = document.getElementById('messageBox');
-    el.textContent = msg;
-    el.className = 'mb-4 p-3 rounded text-sm ' +
-      (type==='error' ? 'bg-red-100 text-red-700' : 'bg-green-100 text-green-700');
-    el.classList.remove('hidden');
-    setTimeout(()=>el.classList.add('hidden'), 3000);
+/* ========================
+   유틸: 메시지
+   ======================== */
+function showMessage(msg, type='info'){
+  const el = document.getElementById('messageBox');
+  el.textContent = msg;
+  el.className = 'mb-4 p-3 rounded text-sm ' + (type==='error' ? 'bg-red-100 text-red-700' : 'bg-green-100 text-green-700');
+  el.classList.remove('hidden');
+  setTimeout(()=>el.classList.add('hidden'), 3000);
+}
+
+/* ========================
+   Firestore load/save
+   ======================== */
+async function loadState(){
+  try {
+    const snap = await DOC.get();
+    if (snap.exists) state = snap.data();
+    else {
+      state = { rtu_units: [], inspections: [], repairs: [] };
+      await DOC.set(state);
+    }
+    renderView(currentView); // render current view after load
+    console.log("Loaded state", state);
+  } catch (e) {
+    console.error(e); showMessage('데이터 로드 실패: '+e.message,'error');
   }
-
-  // --- Firestore 저장/로드 ---
-  async function saveState() {
-    await dbCloud.collection('rtu_system').doc('main').set(db);
-    showMsg('☁️ 클라우드 저장 완료');
+}
+async function saveState(){
+  try {
+    await DOC.set(state);
+    showMessage('클라우드 저장 완료');
+    renderView(currentView);
+  } catch (e) {
+    console.error(e); showMessage('저장 실패: '+e.message,'error');
   }
-  async function loadState() {
-    const snap = await dbCloud.collection('rtu_system').doc('main').get();
-    if (snap.exists) db = snap.data();
-    setView('dashboard');
-  }
+}
 
-  // --- 날짜 기본값 자동설정 ---
-  document.addEventListener('DOMContentLoaded', () => {
-    const today = new Date().toISOString().split('T')[0];
-    document.querySelectorAll('input[type="date"]').forEach(i=>i.value=today);
+/* ========================
+   네비게이션(메뉴 하이라이트)
+   ======================== */
+const navButtons = document.querySelectorAll('header button[data-view]');
+let currentView = 'dashboard';
+navButtons.forEach(b=>{
+  b.addEventListener('click', () => {
+    navButtons.forEach(x=>x.classList.remove('nav-active'));
+    b.classList.add('nav-active');
+    currentView = b.getAttribute('data-view');
+    renderView(currentView);
+  });
+});
+
+/* ========================
+   날짜 기본값 자동 적용
+   ======================== */
+function setTodayOnDates(root=document){
+  const today = new Date().toISOString().split('T')[0];
+  root.querySelectorAll('input[type="date"]').forEach(inp => {
+    if (!inp.value) inp.value = today;
+  });
+}
+
+/* ========================
+   View 렌더러
+   ======================== */
+function renderView(name){
+  const main = document.getElementById('mainArea');
+  if (name==='dashboard') main.innerHTML = renderDashboard();
+  if (name==='register') main.innerHTML = renderRegister();
+  if (name==='inspect') main.innerHTML = renderInspect();
+  if (name==='repair') main.innerHTML = renderRepair();
+  if (name==='report') main.innerHTML = renderReport();
+  // after injecting HTML, wire up event handlers for forms/buttons
+  wireUpView(name);
+  setTodayOnDates(main);
+}
+
+/* ------------------------
+   DASHBOARD
+   ------------------------ */
+function renderDashboard(){
+  const total = state.rtu_units.length;
+  const normal = state.rtu_units.filter(r=>r.status==='정상').length;
+  const need = state.rtu_units.filter(r=>r.status==='점검필요').length;
+  const bad = state.rtu_units.filter(r=>r.status==='불량(수리)').length;
+
+  return `
+    <section class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-4">
+      <div class="card"><p class="text-sm text-gray-500">총 RTU</p><p class="text-2xl font-bold">${total}</p></div>
+      <div class="card"><p class="text-sm text-gray-500">정상</p><p class="text-2xl font-bold">${normal}</p></div>
+      <div class="card"><p class="text-sm text-gray-500">점검필요</p><p class="text-2xl font-bold">${need}</p></div>
+      <div class="card"><p class="text-sm text-gray-500">불량(수리)</p><p class="text-2xl font-bold">${bad}</p></div>
+    </section>
+    <section class="card">
+      <h2 class="font-bold text-lg mb-3">최근 등록 장비</h2>
+      <div id="dashboard-list">${renderRtuSmallList(5)}</div>
+    </section>
+  `;
+}
+
+/* ------------------------
+   RTU 등록 (장비등록) — 이미지 등록 포함
+   ------------------------ */
+function renderRegister(){
+  return `
+  <section class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+    <div class="card">
+      <h2 class="font-bold text-lg mb-3">장비 등록 / 수정</h2>
+      <form id="form-rtu" class="space-y-3">
+        <div><label class="text-sm font-medium">RTU ID *</label><input id="f_rtuId" class="input" required></div>
+        <div><label class="text-sm">모델명</label><input id="f_model" class="input"></div>
+        <div><label class="text-sm">제조사</label><input id="f_manufacturer" class="input"></div>
+        <div><label class="text-sm">냉매 종류</label><input id="f_refrigerant" class="input" placeholder="예: R-410A"></div>
+        <div><label class="text-sm">용량</label><input id="f_capacity" class="input" placeholder="예: 15RT"></div>
+        <div><label class="text-sm">설치일</label><input id="f_installDate" type="date" class="input"></div>
+        <div><label class="text-sm">위치</label><input id="f_location" class="input"></div>
+        <div><label class="text-sm">상태</label>
+          <select id="f_status" class="input">
+            <option>정상</option><option>점검필요</option><option>불량(수리)</option>
+          </select>
+        </div>
+        <div><label class="text-sm">메모</label><textarea id="f_memo" class="input"></textarea></div>
+
+        <div>
+          <label class="text-sm font-medium">장비 사진 (대표, 최대 3장)</label>
+          <input id="f_imgs" type="file" accept="image/*" multiple class="mt-2" />
+          <div id="f_img_preview" class="flex gap-2 mt-3"></div>
+        </div>
+
+        <div class="flex gap-2">
+          <button class="btn" id="btn-save-rtu">저장</button>
+          <button type="button" class="btn-ghost" id="btn-cancel-rtu">취소</button>
+        </div>
+      </form>
+    </div>
+
+    <div class="card">
+      <h2 class="font-bold text-lg mb-3">등록된 장비 목록</h2>
+      <div id="rtu-accum-list" class="space-y-3">${renderRtuListAll()}</div>
+    </div>
+  </section>
+  `;
+}
+
+/* helper: small list for dashboard */
+function renderRtuSmallList(limit=5){
+  if(!state.rtu_units || state.rtu_units.length===0) return '<p class="text-gray-500">등록된 장비가 없습니다.</p>';
+  return state.rtu_units.slice().reverse().slice(0,limit).map(r=>
+    `<div class="flex items-center gap-3 border-b py-2">
+      <div class="w-16 h-12 bg-gray-100 flex items-center justify-center">${r.images && r.images[0] ? `<img src="${r.images[0]}" class="thumb"/>` : '<span class="text-xs text-gray-400">이미지 없음</span>'}</div>
+      <div class="flex-1"><div class="font-semibold">${r.rtuId}</div><div class="text-sm text-gray-500">${r.model || ''} · ${r.location || ''}</div></div>
+      <div class="text-sm ${r.status==='정상'?'text-green-600':r.status==='점검필요'?'text-yellow-600':'text-red-600'}">${r.status}</div>
+    </div>`
+  ).join('');
+}
+
+/* helper: full list rendering */
+function renderRtuListAll(){
+  if(!state.rtu_units || state.rtu_units.length===0) return '<p class="text-gray-500 italic">없음</p>';
+  return state.rtu_units.slice().reverse().map(r=>`
+    <div class="flex items-center gap-3 border p-2 rounded">
+      <div class="w-20 h-14 bg-gray-50 flex items-center justify-center">
+        ${r.images && r.images[0] ? `<img src="${r.images[0]}" class="thumb"/>` : '<span class="text-xs text-gray-400">이미지 없음</span>'}
+      </div>
+      <div class="flex-1">
+        <div class="font-semibold">${r.rtuId} · ${r.model || ''}</div>
+        <div class="text-sm text-gray-500">${r.manufacturer || ''} · ${r.capacity || ''} · ${r.location || ''}</div>
+        <div class="text-xs text-gray-600 mt-1">${r.memo || ''}</div>
+      </div>
+      <div class="flex flex-col gap-2">
+        <button class="text-indigo-600" onclick="startEditRtu('${r.rtuId}')">수정</button>
+        <button class="text-red-600" onclick="deleteRtuConfirm('${r.rtuId}')">삭제</button>
+      </div>
+    </div>
+  `).join('');
+}
+
+/* ========================
+   RTU form handling (images upload etc.)
+   ======================== */
+function wireUpRtuForm(){
+  const inputFiles = document.getElementById('f_imgs');
+  const preview = document.getElementById('f_img_preview');
+  let selectedFiles = [];
+
+  if (!inputFiles) return;
+
+  inputFiles.addEventListener('change', () => {
+    selectedFiles = Array.from(inputFiles.files).slice(0,3);
+    preview.innerHTML = '';
+    selectedFiles.forEach(f=>{
+      const img = document.createElement('img'); img.src = URL.createObjectURL(f); img.className='thumb'; preview.appendChild(img);
+    });
   });
 
-  // --- 화면 전환 ---
-  function setView(name) {
-    const c = document.getElementById('viewContainer');
-    if (name==='dashboard') c.innerHTML = renderDashboard();
-    if (name==='register') c.innerHTML = renderRegister();
-    if (name==='inspect') c.innerHTML = renderInspect();
-    if (name==='repair') c.innerHTML = renderRepair();
-    if (name==='report') c.innerHTML = renderReport();
-  }
+  document.getElementById('btn-cancel-rtu').addEventListener('click', () => {
+    document.getElementById('form-rtu').reset();
+    preview.innerHTML = '';
+    editIndex = null;
+  });
 
-  // --- 대시보드 ---
-  function renderDashboard() {
-    const rows = db.rtu_units.map((r,i)=>`
-      <tr class="border-b">
-        <td class="p-2">${r.rtuId}</td>
-        <td>${r.model}</td>
-        <td>${r.manufacturer}</td>
-        <td>${r.location}</td>
-        <td>${r.status}</td>
-        <td><button onclick="editUnit(${i})" class="text-indigo-600">수정</button></td>
-      </tr>`).join('') || '<tr><td colspan="6" class="p-3 text-center text-gray-400">등록된 장비가 없습니다</td></tr>';
-    return `
-      <h2 class="text-2xl font-bold mb-3">장비 목록</h2>
-      <table class="w-full text-sm border">
-        <thead><tr class="bg-gray-100"><th>RTU ID</th><th>모델</th><th>제조사</th><th>위치</th><th>상태</th><th>관리</th></tr></thead>
-        <tbody>${rows}</tbody>
-      </table>`;
-  }
+  document.getElementById('btn-save-rtu').addEventListener('click', async (ev) => {
+    ev.preventDefault();
+    const id = document.getElementById('f_rtuId').value.trim();
+    if (!id) { showMessage('RTU ID는 필수입니다','error'); return; }
+    // duplicate check if new
+    const existed = state.rtu_units.find(r=>r.rtuId===id);
+    if (!existed && editIndex === null && state.rtu_units.some(r=>r.rtuId===id)) {
+      showMessage('같은 RTU ID가 이미 존재합니다','error'); return;
+    }
 
-  // --- 장비등록 ---
-  function renderRegister() {
-    const u = editIndex !== null ? db.rtu_units[editIndex] : {};
-    return `
-      <h2 class="text-2xl font-bold mb-3">${editIndex!==null?'장비 수정':'장비 등록'}</h2>
-      <form onsubmit="saveRtu(event)" class="space-y-2">
-        <input id="rtuId" class="input" placeholder="RTU ID" value="${u?.rtuId||''}" ${editIndex!==null?'readonly':''} required>
-        <input id="model" class="input" placeholder="모델명" value="${u?.model||''}" required>
-        <input id="manufacturer" class="input" placeholder="제조사" value="${u?.manufacturer||''}">
-        <input id="refrigerant" class="input" placeholder="냉매 종류 (예: R-410A)">
-        <input id="capacity" class="input" placeholder="용량 (예: 15RT)">
-        <input type="date" id="installDate" class="input">
-        <input id="location" class="input" placeholder="설치 위치" value="${u?.location||''}">
-        <select id="status" class="input">
-          <option ${u?.status==='정상'?'selected':''}>정상</option>
-          <option ${u?.status==='점검필요'?'selected':''}>점검필요</option>
-          <option ${u?.status==='불량(수리)'?'selected':''}>불량(수리)</option>
-        </select>
-        <textarea id="memo" class="input" placeholder="비고">${u?.memo||''}</textarea>
-        <button class="btn w-full">저장</button>
-      </form>`;
-  }
-
-  async function saveRtu(e){
-    e.preventDefault();
-    const id = rtuId.value.trim();
-    if(!id) return showMsg("RTU ID 필수","error");
+    // build object
     const obj = {
-      rtuId:id, model:model.value, manufacturer:manufacturer.value,
-      refrigerant:refrigerant.value, capacity:capacity.value,
-      installDate:installDate.value, location:location.value,
-      status:status.value, memo:memo.value
+      rtuId: id,
+      model: document.getElementById('f_model').value,
+      manufacturer: document.getElementById('f_manufacturer').value,
+      refrigerant: document.getElementById('f_refrigerant').value,
+      capacity: document.getElementById('f_capacity').value,
+      installDate: document.getElementById('f_installDate').value,
+      location: document.getElementById('f_location').value,
+      status: document.getElementById('f_status').value,
+      memo: document.getElementById('f_memo').value,
+      images: []
     };
-    const idx = db.rtu_units.findIndex(r=>r.rtuId===id);
-    if(idx>=0) db.rtu_units[idx]=obj; else db.rtu_units.push(obj);
-    editIndex=null;
-    await saveState(); setView('dashboard');
-  }
-  function editUnit(i){ editIndex=i; setView('register'); }
 
-  // --- 점검등록 ---
-  function renderInspect(){
-    const opts=db.rtu_units.map((u,i)=>`<option value="${i}">${u.rtuId}</option>`).join('');
-    return `
-      <h2 class="text-2xl font-bold mb-3">점검 등록</h2>
-      <form onsubmit="saveInspect(event)" class="space-y-2">
-        <select id="i_unit" class="input" required><option value="">RTU 선택</option>${opts}</select>
-        <input id="i_inspector" class="input" placeholder="점검자" required>
-        <input type="date" id="i_date" class="input">
+    // existing merge if editing
+    if (editIndex !== null) {
+      const idx = state.rtu_units.findIndex(x=>x.rtuId===obj.rtuId);
+      if (idx !== -1) obj.images = state.rtu_units[idx].images || [];
+    }
+
+    // upload selected files to Storage
+    if (selectedFiles.length > 0) {
+      try {
+        for (let i=0;i<selectedFiles.length;i++){
+          const file = selectedFiles[i];
+          const ts = new Date().toISOString().replace(/[:.]/g,'-');
+          const path = `rtu_images/${obj.rtuId}/${ts}_rtu_${i+1}_${file.name}`;
+          const ref = storage.ref().child(path);
+          const snap = await ref.put(file);
+          const url = await snap.ref.getDownloadURL();
+          obj.images.push(url);
+        }
+      } catch (e) {
+        console.error('rtu image upload error', e);
+        showMessage('이미지 업로드 실패: '+e.message,'error');
+        return;
+      }
+    }
+
+    if (editIndex !== null) {
+      const idx = state.rtu_units.findIndex(x=>x.rtuId===obj.rtuId);
+      if (idx>=0) state.rtu_units[idx] = obj;
+      editIndex = null;
+    } else {
+      state.rtu_units.push(obj);
+    }
+
+    await saveState();
+    // reset UI
+    document.getElementById('form-rtu').reset();
+    preview.innerHTML = '';
+    renderView('register');
+  });
+}
+
+/* helper to start edit */
+function startEditRtu(rtuId){
+  const idx = state.rtu_units.findIndex(r=>r.rtuId===rtuId);
+  if (idx===-1) { showMessage('장비를 찾을 수 없습니다','error'); return; }
+  const r = state.rtu_units[idx];
+  editIndex = idx;
+  // switch to register view and fill form after render
+  document.querySelector('button[data-view="register"]').click();
+  setTimeout(()=>{
+    document.getElementById('f_rtuId').value = r.rtuId;
+    document.getElementById('f_rtuId').readOnly = true;
+    document.getElementById('f_model').value = r.model || '';
+    document.getElementById('f_manufacturer').value = r.manufacturer || '';
+    document.getElementById('f_refrigerant').value = r.refrigerant || '';
+    document.getElementById('f_capacity').value = r.capacity || '';
+    document.getElementById('f_installDate').value = r.installDate || '';
+    document.getElementById('f_location').value = r.location || '';
+    document.getElementById('f_status').value = r.status || '정상';
+    document.getElementById('f_memo').value = r.memo || '';
+    const preview = document.getElementById('f_img_preview'); preview.innerHTML = '';
+    (r.images || []).forEach(u=>{ const img=document.createElement('img'); img.src=u; img.className='thumb'; preview.appendChild(img); });
+  }, 120);
+}
+
+/* delete RTU */
+function deleteRtuConfirm(rtuId){
+  if (!confirm('정말 삭제하시겠습니까? (관련 점검/수리 기록은 남습니다)')) return;
+  state.rtu_units = state.rtu_units.filter(r=>r.rtuId!==rtuId);
+  saveState();
+}
+
+/* ========================
+   점검 등록 (온도는 과열/과냉만)
+   ======================== */
+function renderInspect(){
+  // top: form on left, accum list on right
+  return `
+  <section class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+    <div class="card">
+      <h2 class="font-bold mb-3">점검 등록</h2>
+      <form id="form-insp" class="space-y-3">
+        <select id="i_rtu" class="input" required>
+          <option value="">RTU 선택</option>${state.rtu_units.map((r,i)=>`<option value="${r.rtuId}">${r.rtuId} (${r.location||''})</option>`).join('')}
+        </select>
+        <input id="i_inspector" class="input" placeholder="점검자">
+        <input id="i_date" type="date" class="input">
         <div class="grid grid-cols-2 gap-2">
-          <input id="i_p1h" class="input" placeholder="컴프1 고압 (psi)">
-          <input id="i_p1l" class="input" placeholder="컴프1 저압 (psi)">
-          <input id="i_p2h" class="input" placeholder="컴프2 고압 (psi)">
-          <input id="i_p2l" class="input" placeholder="컴프2 저압 (psi)">
+          <input id="i_p1h" class="input" placeholder="Comp1 고압 (psi)">
+          <input id="i_p1l" class="input" placeholder="Comp1 저압 (psi)">
+          <input id="i_p2h" class="input" placeholder="Comp2 고압 (psi)">
+          <input id="i_p2l" class="input" placeholder="Comp2 저압 (psi)">
         </div>
         <div class="grid grid-cols-2 gap-2">
-          <input id="i_tin" class="input" placeholder="실내온도 (°F)">
-          <input id="i_tout" class="input" placeholder="실외온도 (°F)">
-          <input id="i_tcon" class="input" placeholder="응축기온도 (°F)">
-          <input id="i_teva" class="input" placeholder="증발기온도 (°F)">
+          <input id="i_overheat" class="input" placeholder="과열도 (°F)">
+          <input id="i_overcool" class="input" placeholder="과냉도 (°F)">
         </div>
         <div class="grid grid-cols-3 gap-2">
           <input id="i_amp" class="input" placeholder="전류 (A)">
           <input id="i_volt" class="input" placeholder="전압 (V)">
           <input id="i_kw" class="input" placeholder="전력 (kW)">
         </div>
-        <select id="i_state" class="input">
-          <option>정상</option><option>점검필요</option><option>불량(수리)</option>
-        </select>
+        <select id="i_state" class="input"><option>정상</option><option>점검필요</option><option>불량(수리)</option></select>
         <textarea id="i_notes" class="input" placeholder="비고"></textarea>
-        <label class="block text-sm text-gray-600">현장 이미지 (최대 3장)</label>
-        <input type="file" id="i_imgs" class="input" multiple accept="image/*">
-        <div id="imgPreview" class="flex flex-wrap"></div>
-        <button class="btn w-full">저장</button>
-      </form>`;
-  }
 
-  async function saveInspect(e){
-    e.preventDefault();
-    const u=db.rtu_units[i_unit.value];
-    if(!u) return showMsg("RTU 선택 필요","error");
+        <label class="text-sm">현장 사진 (최대 3장)</label>
+        <input id="i_imgs" type="file" accept="image/*" multiple />
+        <div id="i_img_preview" class="flex gap-2 mt-2"></div>
 
+        <div class="flex gap-2">
+          <button class="btn" id="btn-save-insp">저장</button>
+          <button type="button" class="btn-ghost" id="btn-reset-insp">취소</button>
+        </div>
+      </form>
+    </div>
+
+    <div class="card">
+      <h2 class="font-bold mb-3">누적 점검 내역</h2>
+      <div id="insp-accum" class="space-y-3">${renderInspListAll()}</div>
+    </div>
+  </section>
+  `;
+}
+
+/* render inspections list (full) */
+function renderInspListAll(){
+  if(!state.inspections || state.inspections.length===0) return '<p class="text-gray-500 italic">없음</p>';
+  return state.inspections.slice().reverse().map(i=>`
+    <div class="border p-2 rounded">
+      <div class="flex justify-between items-start">
+        <div><div class="font-semibold">${i.rtuId}</div><div class="text-xs text-gray-500">${i.date} · ${i.inspector}</div></div>
+        <div class="${i.state==='정상'?'text-green-600':i.state==='점검필요'?'text-yellow-600':'text-red-600'}">${i.state}</div>
+      </div>
+      <div class="text-xs text-gray-600 mt-1">압력: ${i.p1h||'-'}/${i.p1l||'-'} | ${i.p2h||'-'}/${i.p2l||'-'}</div>
+      <div class="text-xs text-gray-600">온도: 과열 ${i.overheating||'-'}°F / 과냉 ${i.overcooling||'-'}°F</div>
+      <div class="flex gap-2 mt-2">${(i.images||[]).map(u=>`<img src="${u}" class="thumb">`).join('')}</div>
+    </div>
+  `).join('');
+}
+
+/* wire up inspect form (preview + upload) */
+function wireUpInspectForm(){
+  const imgInput = document.getElementById('i_imgs');
+  const preview = document.getElementById('i_img_preview');
+  let selectedFiles = [];
+  if (!imgInput) return;
+  imgInput.addEventListener('change', ()=> {
+    selectedFiles = Array.from(imgInput.files).slice(0,3);
+    preview.innerHTML = '';
+    selectedFiles.forEach(f=> { const img=document.createElement('img'); img.src=URL.createObjectURL(f); img.className='thumb'; preview.appendChild(img); });
+  });
+
+  document.getElementById('btn-reset-insp').addEventListener('click', ()=> {
+    document.getElementById('form-insp').reset();
+    preview.innerHTML = '';
+  });
+
+  document.getElementById('btn-save-insp').addEventListener('click', async (ev)=>{
+    ev.preventDefault();
+    const rtuId = document.getElementById('i_rtu').value;
+    if (!rtuId) { showMessage('RTU 선택 필요','error'); return; }
     const insp = {
-      rtuId:u.rtuId, inspector:i_inspector.value, date:i_date.value,
-      p1h:i_p1h.value, p1l:i_p1l.value, p2h:i_p2h.value, p2l:i_p2l.value,
-      tin:i_tin.value, tout:i_tout.value, tcon:i_tcon.value, teva:i_teva.value,
-      amp:i_amp.value, volt:i_volt.value, kw:i_kw.value,
-      state:i_state.value, notes:i_notes.value, images:[]
+      id: 'INS-'+Date.now(),
+      rtuId,
+      inspector: document.getElementById('i_inspector').value,
+      date: document.getElementById('i_date').value || new Date().toISOString().split('T')[0],
+      p1h: document.getElementById('i_p1h').value,
+      p1l: document.getElementById('i_p1l').value,
+      p2h: document.getElementById('i_p2h').value,
+      p2l: document.getElementById('i_p2l').value,
+      overheating: document.getElementById('i_overheat').value,
+      overcooling: document.getElementById('i_overcool').value,
+      amp: document.getElementById('i_amp').value,
+      volt: document.getElementById('i_volt').value,
+      kw: document.getElementById('i_kw').value,
+      state: document.getElementById('i_state').value,
+      notes: document.getElementById('i_notes').value,
+      images: []
     };
-    const files = Array.from(i_imgs.files);
-    for (let file of files) {
-      const path = `rtu_images/${u.rtuId}/${Date.now()}_${file.name}`;
-      const ref = storage.ref(path);
-      await ref.put(file);
-      const url = await ref.getDownloadURL();
-      insp.images.push(url);
-    }
-    db.inspections.push(insp);
-    await saveState();
-    setView('report');
-  }
 
-  // --- 수리등록 ---
-  function renderRepair(){
-    const opts=db.rtu_units.map((u,i)=>`<option value="${i}">${u.rtuId}</option>`).join('');
-    return `
-      <h2 class="text-2xl font-bold mb-3">수리 등록</h2>
-      <form onsubmit="saveRepair(event)" class="space-y-2">
-        <select id="r_unit" class="input" required><option value="">RTU 선택</option>${opts}</select>
+    // upload images
+    try {
+      for (let i=0;i<selectedFiles.length;i++){
+        const file = selectedFiles[i];
+        const ts = new Date().toISOString().replace(/[:.]/g,'-');
+        const path = `rtu_images/${rtuId}/${ts}_insp_${i+1}_${file.name}`;
+        const ref = storage.ref().child(path);
+        const snap = await ref.put(file);
+        const url = await snap.ref.getDownloadURL();
+        insp.images.push(url);
+      }
+    } catch (e) {
+      console.error('insp upload error', e);
+      showMessage('점검 이미지 업로드 실패','error'); return;
+    }
+
+    state.inspections.push(insp);
+    await saveState();
+    // reset UI
+    document.getElementById('form-insp').reset();
+    preview.innerHTML = '';
+  });
+}
+
+/* ========================
+   수리 등록
+   ======================== */
+function renderRepair(){
+  return `
+  <section class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+    <div class="card">
+      <h2 class="font-bold mb-3">수리 등록</h2>
+      <form id="form-rep" class="space-y-3">
+        <select id="r_rtu" class="input" required>
+          <option value="">RTU 선택</option>${state.rtu_units.map(r=>`<option value="${r.rtuId}">${r.rtuId}</option>`).join('')}
+        </select>
         <input type="date" id="r_date" class="input">
-        <input id="r_part" class="input" placeholder="수리 부품">
+        <input id="r_part" class="input" placeholder="부품명">
         <input id="r_cost" class="input" placeholder="비용">
         <input id="r_person" class="input" placeholder="담당자">
         <select id="r_state" class="input"><option>진행중</option><option>완료</option></select>
         <textarea id="r_notes" class="input" placeholder="수리 내용"></textarea>
-        <button class="btn w-full">저장</button>
-      </form>`;
-  }
+        <div class="flex gap-2"><button class="btn" id="btn-save-rep">저장</button><button type="button" class="btn-ghost" id="btn-reset-rep">취소</button></div>
+      </form>
+    </div>
 
-  async function saveRepair(e){
-    e.preventDefault();
-    const u=db.rtu_units[r_unit.value];
-    if(!u) return showMsg("RTU 선택 필요","error");
-    const rep={
-      rtuId:u.rtuId, date:r_date.value, part:r_part.value, cost:r_cost.value,
-      person:r_person.value, state:r_state.value, notes:r_notes.value
+    <div class="card">
+      <h2 class="font-bold mb-3">누적 수리 내역</h2>
+      <div id="rep-accum" class="space-y-3">${renderRepairListAll()}</div>
+    </div>
+  </section>
+  `;
+}
+
+function renderRepairListAll(){
+  if(!state.repairs || state.repairs.length===0) return '<p class="text-gray-500 italic">없음</p>';
+  return state.repairs.slice().reverse().map(r=>`
+    <div class="border p-2 rounded">
+      <div class="flex justify-between"><div><div class="font-semibold">${r.rtuId}</div><div class="text-xs text-gray-500">${r.date}</div></div><div class="text-sm">${r.state}</div></div>
+      <div class="text-xs text-gray-600">부품: ${r.part || '-'} · 비용: ${r.cost || '-'}</div>
+      <div class="text-xs text-gray-600 mt-1">${r.notes || ''}</div>
+    </div>
+  `).join('');
+}
+
+function wireUpRepairForm(){
+  document.getElementById('btn-reset-rep').addEventListener('click', ()=> document.getElementById('form-rep').reset());
+  document.getElementById('btn-save-rep').addEventListener('click', async (ev)=>{
+    ev.preventDefault();
+    const rtuId = document.getElementById('r_rtu').value;
+    if (!rtuId) { showMessage('RTU 선택 필요','error'); return; }
+    const rep = {
+      id: 'REP-'+Date.now(),
+      rtuId,
+      date: document.getElementById('r_date').value || new Date().toISOString().split('T')[0],
+      part: document.getElementById('r_part').value,
+      cost: document.getElementById('r_cost').value,
+      person: document.getElementById('r_person').value,
+      state: document.getElementById('r_state').value,
+      notes: document.getElementById('r_notes').value
     };
-    db.repairs.push(rep);
+    state.repairs.push(rep);
     await saveState();
-    setView('report');
+    document.getElementById('form-rep').reset();
+  });
+}
+
+/* ========================
+   REPORT (점검+수리 통합)
+   ======================== */
+function renderReport(){
+  const insp = state.inspections.slice().reverse().map(i=>`
+    <div class="border p-3 rounded mb-3 bg-white">
+      <div class="flex justify-between"><div><strong>${i.rtuId}</strong><div class="text-xs text-gray-500">${i.date} · ${i.inspector}</div></div>
+      <div class="${i.state==='정상'?'text-green-600':i.state==='점검필요'?'text-yellow-600':'text-red-600'}">${i.state}</div></div>
+      <div class="text-xs mt-2">압력: ${i.p1h||'-'}/${i.p1l||'-'} | ${i.p2h||'-'}/${i.p2l||'-'}</div>
+      <div class="text-xs">과열: ${i.overheating||'-'}°F · 과냉: ${i.overcooling||'-'}°F</div>
+      <div class="flex gap-2 mt-2">${(i.images||[]).map(u=>`<img src="${u}" class="thumb">`).join('')}</div>
+    </div>
+  `).join('') || '<p class="text-gray-500">점검 내역 없음</p>';
+
+  const rep = state.repairs.slice().reverse().map(r=>`
+    <div class="border p-3 rounded mb-3 bg-white">
+      <div class="flex justify-between"><div><strong>${r.rtuId}</strong><div class="text-xs text-gray-500">${r.date} · ${r.person || ''}</div></div><div class="text-sm">${r.state}</div></div>
+      <div class="text-xs mt-2">부품: ${r.part||'-'} · 비용: ${r.cost||'-'}</div>
+      <div class="text-xs mt-2">${r.notes||''}</div>
+    </div>
+  `).join('') || '<p class="text-gray-500">수리 내역 없음</p>';
+
+  return `<section class="grid grid-cols-1 lg:grid-cols-2 gap-6"><div class="card"><h2 class="font-bold mb-3">점검 내역</h2>${insp}</div><div class="card"><h2 class="font-bold mb-3">수리 내역</h2>${rep}</div></section>`;
+}
+
+/* ========================
+   Wire up events after render
+   ======================== */
+function wireUpView(name){
+  // connect forms/buttons depending on view
+  if (name === 'register') {
+    wireUpRtuForm();
+    // file input is created dynamically; ensure we can clear previous readonly flag
+    const cancelBtn = document.getElementById('btn-cancel-rtu');
+    if (cancelBtn) cancelBtn.addEventListener('click', ()=> { document.getElementById('f_rtuId').readOnly = false; });
   }
+  if (name === 'inspect') wireUpInspectForm();
+  if (name === 'repair') wireUpRepairForm();
+  if (name === 'dashboard') { /* nothing special */ }
+  if (name === 'report') { /* nothing special */ }
+}
 
-  // --- 보고서 ---
-  function renderReport(){
-    const insp = db.inspections.map(i=>`
-      <div class="border p-3 rounded mb-3 bg-gray-50">
-        <h3 class="font-bold text-indigo-700">${i.rtuId} (${i.date})</h3>
-        <p class="text-sm text-gray-600">${i.inspector} / 상태: ${i.state}</p>
-        <p class="text-xs">압력1: ${i.p1h}/${i.p1l} psi | 압력2: ${i.p2h}/${i.p2l} psi</p>
-        <p class="text-xs">온도: ${i.tin}/${i.tout}/${i.tcon}/${i.teva} °F</p>
-        <p class="text-xs">전기값: ${i.amp}A / ${i.volt}V / ${i.kw}kW</p>
-        <p class="text-xs text-gray-600">${i.notes||''}</p>
-        <div class="flex flex-wrap mt-2">${(i.images||[]).map(u=>`<img src="${u}" class="preview">`).join('')}</div>
-      </div>`).join('');
+/* ========================
+   Initial load
+   ======================== */
+document.addEventListener('DOMContentLoaded', async ()=>{
+  // ensure nav initial highlight
+  navButtons.forEach(b => b.classList.remove('nav-active'));
+  document.querySelector('button[data-view="register"]').classList.add('nav-active');
+  currentView = 'register';
+  renderView('register');
+  await loadState();
+});
 
-    const rep = db.repairs.map(r=>`
-      <div class="border p-3 rounded mb-3 bg-gray-50">
-        <h3 class="font-bold text-green-700">${r.rtuId} (${r.date})</h3>
-        <p class="text-sm text-gray-600">담당자: ${r.person} / 상태: ${r.state}</p>
-        <p class="text-xs">부품: ${r.part} / 비용: ${r.cost}</p>
-        <p class="text-xs text-gray-600">${r.notes||''}</p>
-      </div>`).join('');
-
-    return `<h2 class="text-2xl font-bold mb-2">점검 내역</h2>${insp || '<p>점검 내역 없음</p>'}
-            <h2 class="text-2xl font-bold mt-6 mb-2">수리 내역</h2>${rep || '<p>수리 내역 없음</p>'}`;
-  }
-
-  document.addEventListener('DOMContentLoaded', loadState);
-  </script>
+/* expose some helpers for debugging in console */
+window._state = state;
+window._reloadState = loadState;
+</script>
 </body>
 </html>
