@@ -1,211 +1,206 @@
 <!DOCTYPE html>
 <html lang="ko">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>RTU 관리 시스템 (Firebase v2)</title>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>RTU 이미지 문제 수정판</title>
   <script src="https://cdn.tailwindcss.com"></script>
 
-  <!-- Firebase CDN -->
+  <!-- Firebase compat SDK -->
   <script src="https://www.gstatic.com/firebasejs/10.12.1/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.1/firebase-firestore-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.1/firebase-storage-compat.js"></script>
 
   <style>
-    body { font-family: 'Inter', sans-serif; background:#f8fafc; }
-    .input { border:1px solid #ccc; border-radius:0.5rem; padding:0.5rem; width:100%; }
-    .btn { background:#4f46e5; color:white; padding:0.5rem 1rem; border-radius:0.5rem; }
-    .btn:hover { background:#4338ca; }
-    img.preview { width:90px; height:90px; object-fit:cover; border-radius:0.5rem; margin:4px; border:1px solid #ddd; }
+    body { font-family: Inter, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; background:#f3f4f6; }
+    .thumb { width:96px; height:72px; object-fit:cover; border-radius:6px; border:1px solid #e5e7eb; }
+    .hidden-file { position:absolute; left:-9999px; }
+    .card { background:white; padding:12px; border-radius:8px; box-shadow: 0 1px 6px rgba(0,0,0,0.04); }
+    .msg { position:fixed; right:16px; bottom:16px; padding:10px 14px; border-radius:8px; box-shadow:0 4px 12px rgba(0,0,0,.08); }
   </style>
 </head>
-<body>
-  <div class="max-w-6xl mx-auto p-4 sm:p-8 bg-white shadow-lg rounded-xl mt-6 mb-12">
-    <h1 class="text-3xl font-extrabold text-indigo-700 mb-4">RTU 관리 시스템 (Firebase v2)</h1>
+<body class="p-6">
+  <div class="max-w-4xl mx-auto">
+    <h1 class="text-2xl font-bold mb-4">RTU 이미지 업로드/미리보기 문제 수정판</h1>
 
-    <div class="flex gap-2 mb-6">
-      <button onclick="setView('dashboard')" class="btn">대시보드</button>
-      <button onclick="setView('register')" class="btn bg-gray-500">장비등록</button>
-      <button onclick="setView('inspect')" class="btn bg-gray-500">점검등록</button>
-      <button onclick="setView('report')" class="btn bg-gray-500">보고서</button>
+    <div class="card mb-4">
+      <h2 class="font-semibold mb-2">장비 등록 (이미지 테스트)</h2>
+      <form id="rtu-form" class="space-y-2">
+        <input id="rtuId" class="border p-2 w-full" placeholder="RTU ID (예: RTU001)" required />
+        <input id="rtuModel" class="border p-2 w-full" placeholder="모델" />
+        <div>
+          <label class="inline-block mr-2">이미지 (최대 3장)</label>
+          <input id="rtuFiles" type="file" accept="image/*" multiple />
+        </div>
+        <div id="preview" class="flex gap-2 mt-2"></div>
+        <div class="flex gap-2">
+          <button class="bg-blue-600 text-white px-4 py-2 rounded" type="submit">저장(이미지 업로드 포함)</button>
+          <button id="clearBtn" type="button" class="bg-gray-200 px-3 py-2 rounded">초기화</button>
+        </div>
+      </form>
     </div>
 
-    <div id="messageBox" class="hidden mb-4 p-3 rounded"></div>
-    <div id="viewContainer"></div>
+    <div class="card mb-4">
+      <h2 class="font-semibold mb-2">저장된 RTU 목록 (이미지 포함)</h2>
+      <div id="rtu-list"></div>
+    </div>
   </div>
 
-  <script>
-  // --- Firebase 설정 ---
+  <div id="toast" class="msg hidden"></div>
+
+<script>
+  // -------- Firebase 설정 (제공하신 값, storageBucket은 .appspot.com 으로) ----------
   const firebaseConfig = {
     apiKey: "AIzaSyD6-IKznyhHIH6eGztJOioL0cDQ57MvNvs",
     authDomain: "rtu-system-han.firebaseapp.com",
     projectId: "rtu-system-han",
-    storageBucket: "rtu-system-han.appspot.com", // ✅ 수정 완료
+    storageBucket: "rtu-system-han.appspot.com",
     messagingSenderId: "960060003353",
     appId: "1:960060003353:web:06932b3da09391c9b0c688",
     measurementId: "G-C2MDK46FFF"
   };
   firebase.initializeApp(firebaseConfig);
-  const dbCloud = firebase.firestore();
+  const db = firebase.firestore();
   const storage = firebase.storage();
+  const DOC = db.collection('rtu_system').doc('main');
 
-  let db = { rtu_units: [], inspections: [], repairs: [] };
-  let editIndex = null;
+  // state
+  let state = { rtu_units: [], inspections: [], repairs: [] };
 
-  // --- 메시지 표시 ---
-  function showMsg(msg, type='info') {
-    const el = document.getElementById('messageBox');
-    el.textContent = msg;
-    el.className = 'mb-4 p-3 rounded text-sm ' +
-      (type==='error' ? 'bg-red-100 text-red-700' : 'bg-green-100 text-green-700');
-    el.classList.remove('hidden');
-    setTimeout(()=>el.classList.add('hidden'), 3000);
+  // 유틸
+  function toast(msg, error=false){
+    const t = document.getElementById('toast');
+    t.textContent = msg; t.className = 'msg ' + (error ? 'bg-red-100 text-red-700' : 'bg-green-100 text-green-700');
+    t.classList.remove('hidden');
+    setTimeout(()=>t.classList.add('hidden'), 3500);
   }
 
-  // --- Firestore 저장/로드 ---
-  async function saveState() {
-    await dbCloud.collection('rtu_system').doc('main').set(db);
-    showMsg('☁️ 데이터 저장 완료');
-  }
-  async function loadState() {
-    const snap = await dbCloud.collection('rtu_system').doc('main').get();
-    if (snap.exists) db = snap.data();
-    setView('dashboard');
-  }
-
-  // --- 화면 전환 ---
-  function setView(name) {
-    const c = document.getElementById('viewContainer');
-    if (name==='dashboard') c.innerHTML = renderDashboard();
-    if (name==='register') c.innerHTML = renderRegister();
-    if (name==='inspect') c.innerHTML = renderInspect();
-    if (name==='report') c.innerHTML = renderReport();
+  // 로드
+  async function loadState(){
+    try {
+      const snap = await DOC.get();
+      if (snap.exists) state = snap.data();
+      else {
+        state = { rtu_units: [], inspections: [], repairs: [] };
+        await DOC.set(state);
+      }
+      renderList();
+      console.log("Loaded state:", state);
+    } catch (e) {
+      console.error("loadState err", e);
+      toast("데이터 불러오기 실패: " + e.message, true);
+    }
   }
 
-  // --- 대시보드 ---
-  function renderDashboard() {
-    const rows = db.rtu_units.map((r,i)=>`
-      <tr class="border-b">
-        <td class="p-2">${r.rtuId}</td>
-        <td>${r.model}</td>
-        <td>${r.location}</td>
-        <td>${r.status}</td>
-        <td><button onclick="editUnit(${i})" class="text-indigo-600">수정</button></td>
-      </tr>`).join('') || '<tr><td colspan="5" class="p-3 text-center text-gray-400">등록된 장비가 없습니다</td></tr>';
-    return `<h2 class="text-2xl font-bold mb-3">장비 목록</h2>
-    <table class="w-full text-sm border"><thead><tr class="bg-gray-100"><th>RTU ID</th><th>모델</th><th>위치</th><th>상태</th><th>관리</th></tr></thead><tbody>${rows}</tbody></table>`;
+  // 저장
+  async function saveState(){
+    try {
+      await DOC.set(state);
+      console.log("Saved state", state);
+      toast("저장 완료");
+      renderList();
+    } catch (e) {
+      console.error("saveState err", e);
+      toast("저장 실패: " + e.message, true);
+    }
   }
 
-  // --- 장비등록 ---
-  function renderRegister() {
-    const u = editIndex !== null ? db.rtu_units[editIndex] : {};
-    return `
-    <h2 class="text-2xl font-bold mb-3">${editIndex!==null?'장비 수정':'장비 등록'}</h2>
-    <form onsubmit="saveRtu(event)" class="space-y-2">
-      <input id="rtuId" class="input" placeholder="RTU ID" value="${u?.rtuId||''}" ${editIndex!==null?'readonly':''} required>
-      <input id="model" class="input" placeholder="모델" value="${u?.model||''}" required>
-      <input id="location" class="input" placeholder="위치" value="${u?.location||''}" required>
-      <select id="status" class="input">
-        <option>정상</option><option>점검필요</option><option>불량(수리)</option>
-      </select>
-      <textarea id="memo" class="input" placeholder="메모">${u?.memo||''}</textarea>
-      <button class="btn w-full">저장</button>
-    </form>`;
-  }
+  // 파일 선택시 즉시 로컬 미리보기
+  const fileInput = document.getElementById('rtuFiles');
+  const preview = document.getElementById('preview');
+  let lastSelectedFiles = [];
 
-  async function saveRtu(e) {
-    e.preventDefault();
-    const id = rtuId.value.trim();
-    if (!id) return showMsg("RTU ID 필수","error");
-    const obj = { rtuId:id, model:model.value, location:location.value, status:status.value, memo:memo.value };
-    const idx = db.rtu_units.findIndex(r=>r.rtuId===id);
-    if (idx>=0) db.rtu_units[idx]=obj; else db.rtu_units.push(obj);
-    editIndex=null;
-    await saveState(); setView('dashboard');
-  }
-  function editUnit(i){ editIndex=i; setView('register'); }
+  fileInput.addEventListener('change', (e) => {
+    const files = Array.from(e.target.files).slice(0,3);
+    lastSelectedFiles = files;
+    preview.innerHTML = '';
+    files.forEach(f => {
+      const img = document.createElement('img');
+      img.src = URL.createObjectURL(f);
+      img.className = 'thumb';
+      preview.appendChild(img);
+    });
+  });
 
-  // --- 점검등록 ---
-  function renderInspect() {
-    const opts=db.rtu_units.map((u,i)=>`<option value="${i}">${u.rtuId}</option>`).join('');
-    return `
-    <h2 class="text-2xl font-bold mb-3">점검 등록</h2>
-    <form onsubmit="saveInspect(event)" class="space-y-2">
-      <select id="i_unit" class="input" required><option value="">RTU 선택</option>${opts}</select>
-      <input id="i_inspector" class="input" placeholder="점검자" required>
-      <input type="date" id="i_date" class="input" required>
-      <div class="grid grid-cols-2 gap-2">
-        <input id="i_p1h" class="input" placeholder="컴프1 고압 (psi)">
-        <input id="i_p1l" class="input" placeholder="컴프1 저압 (psi)">
-        <input id="i_p2h" class="input" placeholder="컴프2 고압 (psi)">
-        <input id="i_p2l" class="input" placeholder="컴프2 저압 (psi)">
-      </div>
-      <div class="grid grid-cols-2 gap-2">
-        <input id="i_tin" class="input" placeholder="실내온도 (°F)">
-        <input id="i_tout" class="input" placeholder="실외온도 (°F)">
-        <input id="i_tcon" class="input" placeholder="응축기온도 (°F)">
-        <input id="i_teva" class="input" placeholder="증발기온도 (°F)">
-      </div>
-      <div class="grid grid-cols-3 gap-2">
-        <input id="i_amp" class="input" placeholder="전류 (A)">
-        <input id="i_volt" class="input" placeholder="전압 (V)">
-        <input id="i_kw" class="input" placeholder="전력 (kW)">
-      </div>
-      <select id="i_state" class="input">
-        <option>정상</option><option>점검필요</option><option>불량(수리)</option>
-      </select>
-      <textarea id="i_notes" class="input" placeholder="비고"></textarea>
-      <label class="block text-sm text-gray-600">현장 이미지 (최대 3장)</label>
-      <input type="file" id="i_imgs" class="input" multiple accept="image/*">
-      <div id="imgPreview" class="flex flex-wrap"></div>
-      <button class="btn w-full">저장</button>
-    </form>`;
-  }
+  // form submit -> upload files then save doc
+  document.getElementById('rtu-form').addEventListener('submit', async (ev) => {
+    ev.preventDefault();
+    const rtuId = document.getElementById('rtuId').value.trim();
+    const model = document.getElementById('rtuModel').value.trim();
+    if (!rtuId) return toast("RTU ID 필요", true);
 
-  async function saveInspect(e){
-    e.preventDefault();
-    const u=db.rtu_units[i_unit.value];
-    if(!u) return showMsg("RTU 선택 필요","error");
+    // 중복 검사
+    const exists = state.rtu_units.find(r => r.rtuId === rtuId);
+    if (exists) return toast("같은 RTU ID 이미 존재", true);
 
-    const insp = {
-      rtuId:u.rtuId, inspector:i_inspector.value, date:i_date.value,
-      p1h:i_p1h.value, p1l:i_p1l.value, p2h:i_p2h.value, p2l:i_p2l.value,
-      tin:i_tin.value, tout:i_tout.value, tcon:i_tcon.value, teva:i_teva.value,
-      amp:i_amp.value, volt:i_volt.value, kw:i_kw.value,
-      state:i_state.value, notes:i_notes.value, images:[]
-    };
+    // 기본 객체
+    const obj = { rtuId, model, images: [] };
 
-    const files = Array.from(i_imgs.files);
-    for (let file of files) {
-      const path = `rtu_images/${u.rtuId}/${Date.now()}_${file.name}`;
-      const ref = storage.ref(path);
-      await ref.put(file);
-      const url = await ref.getDownloadURL();
-      insp.images.push(url);
+    // 업로드 (순차 처리하여 안정성 확보)
+    try {
+      for (let i=0;i<lastSelectedFiles.length && i<3;i++){
+        const file = lastSelectedFiles[i];
+        const ts = new Date().toISOString().replace(/[:.]/g,'-');
+        const path = `rtu_images/${rtuId}/${ts}_rtu_${i+1}_${file.name}`;
+        console.log("Uploading to", path);
+        const ref = storage.ref().child(path);
+        const snap = await ref.put(file);
+        // 반드시 getDownloadURL 호출
+        const url = await snap.ref.getDownloadURL();
+        console.log("Uploaded URL:", url);
+        obj.images.push(url);
+      }
+    } catch (e) {
+      console.error("upload error", e);
+      toast("이미지 업로드 중 오류: " + e.message, true);
+      // 업로드 실패라도 진행할지 결정: 여기서는 저장은 중단
+      return;
     }
 
-    db.inspections.push(insp);
+    // state에 추가하고 저장
+    state.rtu_units.push(obj);
     await saveState();
-    setView('report');
+
+    // reset form
+    document.getElementById('rtu-form').reset();
+    preview.innerHTML = '';
+    lastSelectedFiles = [];
+  });
+
+  // 목록 렌더 (이미지 URL이 있으면 <img>로 보임)
+  function renderList(){
+    const list = document.getElementById('rtu-list');
+    list.innerHTML = '';
+    if (!state.rtu_units || state.rtu_units.length===0) { list.innerHTML = '<p class="text-gray-500">등록된 RTU가 없습니다.</p>'; return; }
+    state.rtu_units.forEach(r => {
+      const div = document.createElement('div');
+      div.className = 'p-3 mb-2 border rounded flex items-center gap-3';
+      const imgWrap = document.createElement('div');
+      imgWrap.style.width = '120px';
+      imgWrap.style.height = '80px';
+      if (r.images && r.images.length){
+        const img = document.createElement('img'); img.src = r.images[0]; img.className='thumb'; imgWrap.appendChild(img);
+      } else {
+        imgWrap.innerHTML = '<div class="text-xs text-gray-400">이미지 없음</div>';
+      }
+      div.appendChild(imgWrap);
+      const info = document.createElement('div'); info.style.flex='1';
+      info.innerHTML = `<div class="font-semibold">${r.rtuId}</div><div class="text-sm text-gray-600">${r.model||''}</div>`;
+      div.appendChild(info);
+      list.appendChild(div);
+    });
   }
 
-  // --- 보고서 ---
-  function renderReport() {
-    if(!db.inspections.length) return '<p class="text-gray-500">점검 내역 없음</p>';
-    return db.inspections.slice(-10).reverse().map(i=>`
-      <div class="border p-3 rounded mb-3 bg-gray-50">
-        <h3 class="font-bold text-indigo-700">${i.rtuId} (${i.date})</h3>
-        <p class="text-sm text-gray-600">${i.inspector} / 상태: ${i.state}</p>
-        <p class="text-xs">압력1: ${i.p1h}/${i.p1l} psi | 압력2: ${i.p2h}/${i.p2l} psi</p>
-        <p class="text-xs">온도: ${i.tin}/${i.tout}/${i.tcon}/${i.teva} °F</p>
-        <p class="text-xs">전기값: ${i.amp}A / ${i.volt}V / ${i.kw}kW</p>
-        <p class="text-xs text-gray-600">${i.notes||''}</p>
-        <div class="flex flex-wrap mt-2">${(i.images||[]).map(u=>`<img src="${u}" class="preview">`).join('')}</div>
-      </div>
-    `).join('');
-  }
+  // 초기 로드
+  loadState();
 
-  document.addEventListener('DOMContentLoaded', loadState);
-  </script>
+  // 디버깅용: 콘솔에서 상태를 바로 볼 수 있게
+  window._state = state;
+  window._reload = loadState;
+
+  // Storage 규칙 안내 (콘솔 출력)
+  console.log("확인: storageBucket =", firebase.app().options.storageBucket);
+  console.log("Firestore doc path: rtu_system/main");
+</script>
 </body>
 </html>
