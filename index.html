@@ -1,4 +1,4 @@
-<!DOCTYPE HTML>
+<!DOCTYPE TML>
 <html lang="ko">
 <head>
   <meta charset="utf-8"/>
@@ -604,7 +604,7 @@
         }
     }
     
-    // 수정: Issue 1 - 이미지 확대 로직 분리
+    // Issue 1: 이미지 확대 로직 분리
     function openImageInNewTab(url, event) {
         event.preventDefault(); // 앵커 태그의 기본 동작 방지
         event.stopPropagation(); // 모달 닫힘 방지
@@ -631,7 +631,7 @@
         elements.repairRtuIdSelect.innerHTML = '<option value="">-- RTU를 선택하세요 --</option>' + optionsHtml;
     }
 
-    /* ============================ RTU 폼 관리 (FIX 2) ============================ */
+    /* ============================ RTU 폼 관리 ============================ */
 
     function resetRtuForm() {
         elements.rtuForm.reset();
@@ -681,7 +681,7 @@
         }
     }
     
-    // FIX 2: 이미지 선택/미리보기 기능 구현 (Base64 변환)
+    // 이미지 선택/미리보기 기능 구현 (Base64 변환)
     function previewImage(event, index) {
         const file = event.target.files[0];
         const previewElement = elements[`imagePreview${index}`];
@@ -999,7 +999,7 @@
         elements.detailModal.classList.remove('hidden');
     }
 
-    /* ============================ 대시보드 및 보고서 (FIX 4) ============================ */
+    /* ============================ 대시보드 및 보고서 ============================ */
     function updateDashboard() {
         // FIX 4: 대시보드 데이터 계산 및 표시
         elements.dashboardTotal.textContent = rtuList.length;
@@ -1059,7 +1059,7 @@
     }
 
 
-    /* ============================ 폼 제출 이벤트 리스너 (FIX 1, 2) ============================ */
+    /* ============================ 폼 제출 이벤트 리스너 (RTU 중복 체크 로직 포함) ============================ */
     elements.rtuForm.addEventListener('submit', function(e) {
         e.preventDefault();
         
@@ -1073,11 +1073,12 @@
             return;
         }
 
-        // FIX 1: 중복 등록 방지 로직
+        // 유닛 이름 중복 저장 방지 로직 (신규 등록 모드에서만 체크)
         if (currentRtuMode === 'new') {
+            // trim() 처리된 rtuId를 사용하여 기존 목록에 동일한 ID가 있는지 확인
             if (rtuList.some(r => r.id === rtuId)) {
-                alert(`오류: [${rtuId}] 이름을 가진 RTU가 이미 등록되어 있습니다. 다른 이름으로 등록하거나 수정 모드를 사용하세요.`);
-                return;
+                alert(`오류: [${rtuId}] 이름을 가진 RTU가 이미 등록되어 있습니다. 다른 이름으로 등록하거나 '정보 수정' 모드를 사용하세요.`);
+                return; // 중복이므로 저장 중단
             }
         } else {
             // 수정 모드 시도 시, ID가 폼의 ID와 일치하는지 확인 (readOnly로 보호)
@@ -1087,7 +1088,7 @@
             }
         }
         
-        // FIX 2: 이미지 Base64 데이터 추가
+        // 이미지 Base64 데이터 추가
         newRtu.imageUrl1 = imageBase64Data.imageUrl1;
         newRtu.imageUrl2 = imageBase64Data.imageUrl2;
         newRtu.imageUrl3 = imageBase64Data.imageUrl3;
