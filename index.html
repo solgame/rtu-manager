@@ -1,4 +1,4 @@
-<!DOCTYPE HTML>
+<!DOCTYPE TML>
 <html lang="ko">
 <head>
   <meta charset="utf-8"/>
@@ -476,6 +476,9 @@
     let inspectionList = loadList(STORAGE_KEYS.INSPECTION);
     let repairList = loadList(STORAGE_KEYS.REPAIR);
 
+    // 이미지 임시 저장소 (Base64 URL)
+    let imagePreviewUrls = { 1: '', 2: '', 3: '' };
+
     // 장비 등록 모드 상태 관리
     let rtuMode = 'new'; // 'new' 또는 'modify'
     let currentRtuIdForModification = null; // 수정 중인 RTU의 ID
@@ -598,7 +601,9 @@
             document.getElementById('mode-new-btn').classList.replace('text-gray-700', 'text-white');
             document.getElementById('mode-modify-btn').classList.replace('bg-blue-600', 'bg-gray-200');
             document.getElementById('mode-modify-btn').classList.replace('text-white', 'text-gray-700');
-            hideImagePreviews();
+            
+            hideImagePreviews(); // 이미지 미리보기/데이터 초기화
+            imagePreviewUrls = { 1: '', 2: '', 3: '' }; // 이미지 URL 임시 저장소 초기화
         } else if (mode === 'modify') {
             title.textContent = 'RTU 장비 정보 수정';
             submitBtn.textContent = 'RTU 정보 업데이트';
@@ -636,10 +641,17 @@
         document.getElementById('rtu-notes').value = rtu.notes || '';
 
         // 이미지 미리보기 설정
-        hideImagePreviews();
+        imagePreviewUrls = { 1: rtu.imageUrl1 || '', 2: rtu.imageUrl2 || '', 3: rtu.imageUrl3 || '' };
+        
+        hideImagePreviews(); // 기존 미리보기 초기화
         if (rtu.imageUrl1) previewImageFromUrl(rtu.imageUrl1, 1);
         if (rtu.imageUrl2) previewImageFromUrl(rtu.imageUrl2, 2);
         if (rtu.imageUrl3) previewImageFromUrl(rtu.imageUrl3, 3);
+        
+        // 파일 입력 필드 초기화 (기존 데이터 URL을 사용하기 위해)
+        document.getElementById('rtu-image1').value = '';
+        document.getElementById('rtu-image2').value = '';
+        document.getElementById('rtu-image3').value = '';
 
         // 폼으로 스크롤 이동
         document.getElementById('rtu-form-title').scrollIntoView({ behavior: 'smooth' });
@@ -677,7 +689,11 @@
             rtuData[key] = value;
         }
 
-        // 이미지 파일 처리 로직은 로컬 저장소 특성상 실제 업로드를 할 수 없으므로 placeholder URL 사용
+        // 이미지 URL을 임시 저장소(imagePreviewUrls)에서 가져와 최종 데이터에 포함
+        rtuData.imageUrl1 = imagePreviewUrls[1] || '';
+        rtuData.imageUrl2 = imagePreviewUrls[2] || '';
+        rtuData.imageUrl3 = imagePreviewUrls[3] || '';
+
         const existingRtu = rtuList.find(r => r.id === rtuData.name);
 
         if (rtuMode === 'new') {
@@ -688,9 +704,6 @@
             // 신규 등록 로직
             rtuData.id = rtuData.name;
             rtuData.lastModified = new Date().toISOString();
-            rtuData.imageUrl1 = document.getElementById('image-preview-1').src.startsWith('data:') ? document.getElementById('image-preview-1').src : '';
-            rtuData.imageUrl2 = document.getElementById('image-preview-2').src.startsWith('data:') ? document.getElementById('image-preview-2').src : '';
-            rtuData.imageUrl3 = document.getElementById('image-preview-3').src.startsWith('data:') ? document.getElementById('image-preview-3').src : '';
 
             rtuList.push(rtuData);
             alert(`RTU 장비 (${rtuData.name}) 등록이 완료되었습니다.`);
@@ -707,14 +720,9 @@
                     id: existing.id, // ID는 수정 불가
                     name: existing.name, // 이름(ID)도 수정 불가
                     lastModified: new Date().toISOString(),
-                    // 이미지 처리는 간단히 URL을 유지하거나 새로 업로드된 데이터 URL을 사용
-                    imageUrl1: document.getElementById('image-preview-1').src.startsWith('data:') ? document.getElementById('image-preview-1').src : existing.imageUrl1 || '',
-                    imageUrl2: document.getElementById('image-preview-2').src.startsWith('data:') ? document.getElementById('image-preview-2').src : existing.imageUrl2 || '',
-                    imageUrl3: document.getElementById('image-preview-3').src.startsWith('data:') ? document.getElementById('image-preview-3').src : existing.imageUrl3 || '',
+                    // 이미지 URL은 이미 위에서 rtuData에 imagePreviewUrls 값이 덮어씌워짐
                 };
 
-                // 파일 입력 필드가 비어 있으면 기존 URL 유지 (base64 이미지 데이터 대신 URL 사용을 가정한 로직)
-                // 실제 파일 처리 로직은 복잡하므로 로컬 저장소에서는 URL/Base64로 대체
                 rtuList[index] = updatedRtu;
                 alert(`RTU 장비 (${updatedRtu.name}) 정보가 수정되었습니다.`);
             } else {
@@ -726,12 +734,18 @@
 
         saveList(STORAGE_KEYS.RTU, rtuList);
         elements.rtuForm.reset();
+        
+        // 폼 초기화 후 이미지 임시 저장소 및 UI도 초기화
+        imagePreviewUrls = { 1: '', 2: '', 3: '' };
+        hideImagePreviews(); 
+
         switchRtuMode('new');
         renderRtuList();
         populateRtuSelects();
         updateDashboard();
     }
 
+    // 이미지 파일이 선택될 때 실행
     function previewImage(event, index) {
         const file = event.target.files[0];
         const previewImg = document.getElementById(`image-preview-${index}`);
@@ -743,24 +757,35 @@
                 previewImg.src = e.target.result;
                 previewImg.style.display = 'block';
                 container.classList.remove('hidden');
+                // **수정**: Base64 URL을 임시 저장소에 저장
+                imagePreviewUrls[index] = e.target.result; 
             };
             reader.readAsDataURL(file);
         } else {
+            // **수정**: 파일이 취소된 경우, 임시 저장소에서도 해당 URL 제거
             previewImg.src = '';
             previewImg.style.display = 'none';
+            imagePreviewUrls[index] = '';
             checkIfAnyPreviewIsVisible();
         }
     }
 
+    // 기존 데이터의 URL을 이용해 미리보기 표시
     function previewImageFromUrl(url, index) {
         const previewImg = document.getElementById(`image-preview-${index}`);
         const container = elements.imagePreviewContainer;
-        previewImg.src = url;
-        previewImg.style.display = 'block';
-        container.classList.remove('hidden');
+        if (url) {
+            previewImg.src = url;
+            previewImg.style.display = 'block';
+            container.classList.remove('hidden');
+        } else {
+            previewImg.src = '';
+            previewImg.style.display = 'none';
+        }
     }
 
     function hideImagePreviews() {
+        // 미리보기 이미지 DOM 초기화
         document.getElementById('image-preview-1').src = '';
         document.getElementById('image-preview-2').src = '';
         document.getElementById('image-preview-3').src = '';
@@ -1058,6 +1083,7 @@
 
         if (rtu.imageUrl1 || rtu.imageUrl2 || rtu.imageUrl3) {
             html += `<h4 class="text-base font-semibold text-gray-800 mt-4 border-t pt-2">장비 사진</h4><div class="flex flex-wrap gap-4 mt-2">`;
+            // Base64 데이터 URL인 경우 이미지를 로드할 수 있음
             if (rtu.imageUrl1) html += `<img src="${rtu.imageUrl1}" alt="Image 1" class="thumb">`;
             if (rtu.imageUrl2) html += `<img src="${rtu.imageUrl2}" alt="Image 2" class="thumb">`;
             if (rtu.imageUrl3) html += `<img src="${rtu.imageUrl3}" alt="Image 3" class="thumb">`;
@@ -1142,7 +1168,7 @@
             case 'repair':
                 title.textContent = '수리 기록 상세 정보';
                 data = repairList.find(r => r.id === id);
-                htmlContent = data ? getRepairDetailHtml(data) : '<p class="text-red-500">정보를 찾을 수 없습니다.</p>';
+                htmlContent = data ? getRepairDetailHtml(data) : '<p class="text-red-500">정보를 찾을 수 없습니다. (ID: ${id})</p>';
                 break;
             default:
                 title.textContent = '상세 정보';
