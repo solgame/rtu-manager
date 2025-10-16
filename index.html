@@ -265,7 +265,7 @@
                             <label for="check3" class="block font-medium text-gray-700">3. 콘덴싱 코일</label>
                             <select id="check3" name="check3" class="mt-1 w-full border-gray-300 rounded-md p-1 border">
                                 <option value="양호">양호</option>
-                                <option value="오염/청소필요">오염/청소필요</option>
+                                <option value="오염/청소필요">오염/청소필터</option>
                             </select>
                         </div>
                         <div>
@@ -603,6 +603,24 @@
             history.replaceState(null, null, ' ');
         }
     }
+    
+    // 수정: Issue 1 - 이미지 확대 로직 분리
+    function openImageInNewTab(url, event) {
+        event.preventDefault(); // 앵커 태그의 기본 동작 방지
+        event.stopPropagation(); // 모달 닫힘 방지
+        
+        // Base64 URL이 너무 길어 새 창에서 열리지 않는 경우를 대비해 window.open 사용
+        if (url.startsWith('data:image')) {
+            const newWindow = window.open();
+            newWindow.document.write(`<img src="${url}" style="max-width: 100%; height: auto;">`);
+            newWindow.document.title = '확대 이미지';
+            newWindow.document.close();
+        } else {
+             // 일반 URL의 경우
+             window.open(url, '_blank');
+        }
+    }
+
 
     function populateRtuSelects() {
         const optionsHtml = rtuList.map(rtu => 
@@ -867,7 +885,7 @@
         });
     }
 
-    /* ============================ 상세 모달 및 이미지 확대 (FIX 3) ============================ */
+    /* ============================ 상세 모달 및 이미지 확대 (Issue 1) ============================ */
     function showRtuDetail(rtuId) {
         const rtu = rtuList.find(r => r.id === rtuId);
         if (!rtu) return;
@@ -890,11 +908,11 @@
         </div>`;
 
         let imageHtml = '';
-        // FIX 3: Base64 데이터 URL을 사용하여 별도 창 확대 기능 보장
+        // Issue 1 수정: a 태그의 href 대신 openImageInNewTab 함수 사용
         [rtu.imageUrl1, rtu.imageUrl2, rtu.imageUrl3].filter(url => url).forEach((url, index) => {
             imageHtml += `<div class="mb-4 pt-4 border-t border-gray-200">
                 <h4 class="text-md font-semibold text-gray-800 mb-2">장비 사진 ${index + 1} (클릭 시 확대)</h4>
-                <a href="${url}" target="_blank" onclick="event.stopPropagation()">
+                <a href="#" onclick="openImageInNewTab('${url}', event)">
                     <img src="${url}" alt="RTU Image ${index + 1}" class="w-full h-auto object-contain max-h-96 rounded-lg shadow-lg border cursor-pointer">
                 </a>
                 <p class="text-xs text-gray-400 mt-1">이미지를 클릭하면 새 창에서 원본 크기로 확대됩니다.</p>
@@ -1123,6 +1141,93 @@
         renderRepairList();
         e.target.reset(); 
     });
+    
+    /* ============================ CSV 다운로드 기능 (Issue 2) ============================ */
+    
+    function convertToCsv(dataArray) {
+        if (!dataArray || dataArray.length === 0) {
+            return '';
+        }
+
+        // CSV 헤더 생성 (모든 키 포함)
+        const allKeys = new Set();
+        dataArray.forEach(obj => {
+            Object.keys(obj).forEach(key => allKeys.add(key));
+        });
+        const headers = Array.from(allKeys);
+        const csvRows = [];
+        
+        // UTF-8 BOM 추가하여 엑셀에서 한글 깨짐 방지
+        csvRows.push('\ufeff' + headers.join(','));
+
+        // 데이터 행 생성
+        for (const row of dataArray) {
+            const values = headers.map(header => {
+                const value = row[header] === undefined || row[header] === null ? '' : String(row[header]);
+                
+                // CSV 포맷팅: 따옴표 안의 따옴표는 두 개로 이스케이프, 쉼표나 개행문자가 포함된 경우 전체를 따옴표로 감쌈
+                const escaped = value.replace(/"/g, '""'); 
+                if (escaped.includes(',') || escaped.includes('\n') || escaped.includes('\r') || escaped !== value) {
+                    return `"${escaped}"`;
+                }
+                return escaped;
+            });
+            csvRows.push(values.join(','));
+        }
+
+        return csvRows.join('\n');
+    }
+    
+    function downloadCsvFile(filename, csvString) {
+        const blob = new Blob([csvString], { type: 'text/csv;charset=utf-8;' });
+        const link = document.createElement('a');
+        
+        if (link.download !== undefined) {
+            const url = URL.createObjectURL(blob);
+            link.setAttribute('href', url);
+            link.setAttribute('download', filename);
+            link.style.visibility = 'hidden';
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        } else {
+            // 브라우저가 Blob을 지원하지 않는 경우 대비
+            alert('죄송합니다. 이 브라우저에서는 파일 다운로드를 지원하지 않습니다.');
+        }
+    }
+    
+    function downloadDataAsCsv() {
+        const timestamp = new Date().toISOString().replace(/:/g, '-').split('.')[0];
+
+        // 1. RTU 데이터 다운로드
+        const rtuCsv = convertToCsv(rtuList);
+        if (rtuCsv) {
+            downloadCsvFile(`rtu_data_${timestamp}.csv`, rtuCsv);
+        }
+
+        // 2. 점검 기록 다운로드
+        const inspectionCsv = convertToCsv(inspectionList);
+        if (inspectionCsv) {
+            // 딜레이를 주어 파일 이름 충돌 방지 및 브라우저 혼란 방지 (필수 아님, 안전 장치)
+            setTimeout(() => {
+                downloadCsvFile(`inspection_data_${timestamp}.csv`, inspectionCsv);
+            }, 1000); 
+        }
+
+        // 3. 수리 기록 다운로드
+        const repairCsv = convertToCsv(repairList);
+        if (repairCsv) {
+            setTimeout(() => {
+                downloadCsvFile(`repair_data_${timestamp}.csv`, repairCsv);
+            }, 2000);
+        }
+        
+        if (!rtuCsv && !inspectionCsv && !repairCsv) {
+            alert('다운로드할 데이터가 로컬 저장소에 없습니다.');
+        } else {
+             alert('RTU, 점검 기록, 수리 기록 데이터가 순차적으로 다운로드됩니다.');
+        }
+    }
 
 
     /* ============================ 페이지 초기화 ============================ */
@@ -1140,9 +1245,15 @@
         
         // 초기 탭 설정 (대시보드를 먼저 보여줌)
         document.getElementById('dashboard').classList.remove('hidden');
-        elements.tabBtns[0].classList.add('tab-active', 'border-blue-500', 'text-blue-600');
-        elements.tabBtns[0].classList.remove('border-transparent', 'text-gray-500', 'hover:text-gray-700', 'hover:border-gray-300');
-
+        elements.tabBtns.forEach(btn => {
+            if (btn.dataset.tab === 'dashboard') {
+                btn.classList.add('tab-active', 'border-blue-500', 'text-blue-600');
+                btn.classList.remove('border-transparent', 'text-gray-500', 'hover:text-gray-700', 'hover:border-gray-300');
+            } else {
+                document.getElementById(btn.dataset.tab).classList.add('hidden');
+            }
+        });
+        
         // --- 모달 이벤트 리스너 ---
         elements.closeModalBtn.addEventListener('click', (e) => { 
             e.stopPropagation(); 
@@ -1168,10 +1279,8 @@
             });
         });
 
-        // 다운로드 버튼 (스텁)
-        document.getElementById('download-data-btn').addEventListener('click', () => {
-             alert('데이터 CSV 다운로드 기능은 로직 구현이 필요합니다.');
-        });
+        // Issue 2 수정: 다운로드 버튼 로직 연결
+        document.getElementById('download-data-btn').addEventListener('click', downloadDataAsCsv);
         
         // 전역 함수 등록
         window.editRtu = editRtu;
@@ -1181,6 +1290,7 @@
         window.showRepairDetail = showRepairDetail;
         window.previewImage = previewImage;
         window.switchRtuMode = switchRtuMode;
+        window.openImageInNewTab = openImageInNewTab; // Issue 1 추가
 
     }
 
