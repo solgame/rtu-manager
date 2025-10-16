@@ -534,36 +534,49 @@
 
     /* ============================ RTU 등록/관리 기능 ============================ */
 
-    // RTU 목록 렌더링 (수정 요청 반영: 상세, 삭제 버튼 제거, 수정 버튼만 유지)
+    // RTU 목록 렌더링 (요청 반영: 상세 모달 호출 및 수정/삭제 버튼 복원)
     function renderRtuList() {
-      const listContainer = elements.rtuList;
-      listContainer.innerHTML = '';
-      elements.rtuCountSpan.textContent = rtuList.length;
+        // 최신 수정일 기준 정렬 (최신순)
+        const list = rtuList.sort((a, b) => new Date(b.lastModified || b.date) - new Date(a.lastModified || a.date)); 
+        elements.rtuCountSpan.textContent = list.length;
+        elements.rtuList.innerHTML = '';
 
-      if (rtuList.length === 0) {
-        listContainer.innerHTML = '<p class="text-gray-500 italic">등록된 RTU 장비가 없습니다.</p>';
-        return;
-      }
+        if (list.length === 0) {
+            elements.rtuList.innerHTML = '<p class="text-gray-500 italic">등록된 RTU 장비가 없습니다.</p>';
+            return;
+        }
 
-      rtuList.forEach(rtu => {
-        const statusColor = rtu.status === '작동중' ? 'bg-green-100 text-green-800' :
-          rtu.status === '정지됨' ? 'bg-gray-100 text-gray-800' :
-          'bg-red-100 text-red-800';
+        list.forEach(rtu => {
+            const item = document.createElement('div');
+            // 요청 반영: 항목 클릭 시 상세 정보 모달 호출 기능 복원
+            item.onclick = () => showDetailModal(rtu.id, 'rtu'); 
 
-        // 변경 사항: 전체 항목 클릭 시의 상세 모달 호출(onclick 이벤트) 및 상세/삭제 버튼 제거, 수정 버튼만 남김
-        const itemHtml = `
-          <div id="rtu-item-${rtu.id}" class="bg-gray-50 p-4 rounded-lg shadow-sm border border-gray-200 flex justify-between items-center cursor-pointer hover:bg-gray-100 transition duration-150">
-            <div>
-              <p class="text-lg font-bold text-gray-800">${rtu.name} (<span class="text-sm font-normal text-gray-600">${rtu.region}</span>)</p>
-              <span class="text-xs font-semibold px-2.5 py-0.5 rounded-full ${statusColor}">${rtu.status}</span>
-            </div>
-            <div class="flex items-center space-x-3">
-              <button onclick="editRtu('${rtu.id}'); event.stopPropagation();" class="text-green-600 hover:text-green-800 font-semibold text-sm">수정</button>
-            </div>
-          </div>
-        `;
-        listContainer.insertAdjacentHTML('beforeend', itemHtml);
-      });
+            const statusColor = rtu.status === '작동중' ? 'text-green-600 font-medium' :
+                                rtu.status === '정지됨' ? 'text-gray-600 font-medium' :
+                                'text-red-600 font-medium';
+
+            item.className = 'bg-gray-50 p-4 rounded-lg shadow-sm flex justify-between items-center transition duration-150 hover:bg-gray-100 border cursor-pointer'; 
+
+            const content = `
+                <div class="flex-grow">
+                    <p class="text-lg font-semibold text-gray-900">${rtu.name} (<span class="text-gray-600">${rtu.region}</span>)</p>
+                    <p class="text-sm text-gray-500 mt-1">모델: ${rtu.model || 'N/A'} | 상태: <span class="${statusColor}">${rtu.status}</span></p>
+                </div>
+            `;
+            item.innerHTML = content;
+            
+            const actions = document.createElement('div');
+            actions.className = 'flex space-x-2 ml-4 flex-shrink-0';
+            
+            // 요청 반영: 수정 및 삭제 버튼 모두 복원
+            actions.innerHTML = `
+                <button onclick="event.stopPropagation(); editRtu('${rtu.id}')" class="text-sm bg-indigo-500 text-white py-1 px-3 rounded-full hover:bg-indigo-600 transition">수정</button>
+                <button onclick="event.stopPropagation(); deleteRtu('${rtu.id}')" class="text-sm bg-red-500 text-white py-1 px-3 rounded-full hover:bg-red-600 transition">삭제</button>
+            `; 
+
+            item.appendChild(actions);
+            elements.rtuList.appendChild(item);
+        });
     }
 
     function switchRtuMode(mode) {
@@ -594,7 +607,7 @@
             document.getElementById('mode-new-btn').classList.replace('bg-blue-600', 'bg-gray-200');
             document.getElementById('mode-new-btn').classList.replace('text-white', 'text-gray-700');
             document.getElementById('mode-modify-btn').classList.replace('bg-gray-200', 'bg-blue-600');
-            document.getElementById('mode-modify-btn').classList.replace('text-gray-700', 'text-white');
+            document.getElementById('mode-modify-btn').classList.replace('text-white', 'text-gray-700');
             // 수정 모드로 전환 시, 목록에서 하나를 선택해야 함을 알림
             alert("수정 모드입니다. 목록에서 수정할 RTU를 선택하세요.");
         }
@@ -632,7 +645,7 @@
         document.getElementById('rtu-form-title').scrollIntoView({ behavior: 'smooth' });
     }
 
-    // 삭제 버튼은 요청에 따라 제거되었지만, 혹시 모를 로직을 위해 함수는 유지
+    // 삭제 버튼 복원
     function deleteRtu(rtuId) {
         if (confirm(`RTU ID: ${rtuId} 장비와 모든 관련 기록을 삭제하시겠습니까?`)) {
             // RTU 삭제
@@ -811,8 +824,6 @@
             // 온도 측정 (요청에 따라 evapTemp는 제거됨)
             superheat: formData.get('superheat'),
             subcool: formData.get('subcool'),
-            // evapTemp: formData.get('evapTemp'), // 필드 제거로 인해 데이터 수집에서도 제거
-
         };
 
         if (inspectionData.rtuId === '') {
