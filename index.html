@@ -1,4 +1,4 @@
-<!DOCTYPE TML>
+<!DOCTYPE HTML>
 <html lang="ko">
 <head>
   <meta charset="utf-8"/>
@@ -7,7 +7,8 @@
   <script src="https://cdn.tailwindcss.com"></script>
   <style>
     body { font-family: Inter, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; background:#f3f4f6; }
-    .thumb { width:96px; height:72px; object-fit:cover; border-radius:6px; box-shadow:0 1px 4px rgba(0,0,0,0.08); }
+    /* 수정: 미리보기 이미지 클릭 가능하도록 cursor: pointer 추가 */
+    .thumb { width:96px; height:72px; object-fit:cover; border-radius:6px; box-shadow:0 1px 4px rgba(0,0,0,0.08); cursor: pointer; }
     .hidden-file { position:absolute; left:-9999px; }
     .modal-bg { background: rgba(17,24,39,0.6); }
     /* 활성화된 탭 스타일 */
@@ -456,6 +457,7 @@
       </div>
     </div>
   </div>
+  
   <div id="detail-modal" class="modal-bg hidden fixed inset-0 z-50 flex items-center justify-center p-4">
     <div class="bg-white rounded-xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto p-6 relative">
       <h3 id="modal-title" class="text-xl font-bold text-gray-800 mb-4 border-b pb-2">상세 정보</h3>
@@ -469,6 +471,18 @@
       </button>
     </div>
   </div>
+
+  <div id="zoom-modal" class="modal-bg hidden fixed inset-0 z-[60] flex items-center justify-center p-4">
+    <div class="bg-white rounded-xl shadow-2xl max-w-4xl max-h-[95vh] relative p-2">
+      <img id="zoom-image" src="" alt="확대 이미지" class="max-w-full max-h-[90vh] object-contain rounded-lg">
+      <button id="close-zoom-btn" class="absolute top-2 right-2 text-white bg-black/50 hover:bg-black/70 rounded-full p-2 transition">
+        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+        </svg>
+      </button>
+    </div>
+  </div>
+  
   <script>
     /* ============================ 로컬 저장소 및 데이터 구조 ============================ */
     const STORAGE_KEYS = { RTU: 'rtuList', INSPECTION: 'inspectionList', REPAIR: 'repairList' };
@@ -533,6 +547,10 @@
       dashboardMonthlyInspection: document.getElementById('dashboard-monthly-inspection'),
       dashboardPendingRepair: document.getElementById('dashboard-pending-repair'),
       dashboardLatestList: document.getElementById('dashboard-latest-list'),
+      // 이미지 확대 모달 요소 추가
+      zoomModal: document.getElementById('zoom-modal'),
+      zoomImage: document.getElementById('zoom-image'),
+      closeZoomBtn: document.getElementById('close-zoom-btn'),
     };
 
     /* ============================ RTU 등록/관리 기능 ============================ */
@@ -789,6 +807,9 @@
         document.getElementById('image-preview-1').src = '';
         document.getElementById('image-preview-2').src = '';
         document.getElementById('image-preview-3').src = '';
+        document.getElementById('image-image1').value = '';
+        document.getElementById('image-image2').value = '';
+        document.getElementById('image-image3').value = '';
         document.getElementById('image-preview-1').style.display = 'none';
         document.getElementById('image-preview-2').style.display = 'none';
         document.getElementById('image-preview-3').style.display = 'none';
@@ -1082,11 +1103,11 @@
         `;
 
         if (rtu.imageUrl1 || rtu.imageUrl2 || rtu.imageUrl3) {
-            html += `<h4 class="text-base font-semibold text-gray-800 mt-4 border-t pt-2">장비 사진</h4><div class="flex flex-wrap gap-4 mt-2">`;
-            // Base64 데이터 URL인 경우 이미지를 로드할 수 있음
-            if (rtu.imageUrl1) html += `<img src="${rtu.imageUrl1}" alt="Image 1" class="thumb">`;
-            if (rtu.imageUrl2) html += `<img src="${rtu.imageUrl2}" alt="Image 2" class="thumb">`;
-            if (rtu.imageUrl3) html += `<img src="${rtu.imageUrl3}" alt="Image 3" class="thumb">`;
+            // 이미지 클릭 시 showZoomModal 호출 추가
+            html += `<h4 class="text-base font-semibold text-gray-800 mt-4 border-t pt-2">장비 사진 (클릭 시 확대)</h4><div class="flex flex-wrap gap-4 mt-2">`;
+            if (rtu.imageUrl1) html += `<img src="${rtu.imageUrl1}" alt="Image 1" class="thumb" onclick="event.stopPropagation(); showZoomModal('${rtu.imageUrl1}')">`;
+            if (rtu.imageUrl2) html += `<img src="${rtu.imageUrl2}" alt="Image 2" class="thumb" onclick="event.stopPropagation(); showZoomModal('${rtu.imageUrl2}')">`;
+            if (rtu.imageUrl3) html += `<img src="${rtu.imageUrl3}" alt="Image 3" class="thumb" onclick="event.stopPropagation(); showZoomModal('${rtu.imageUrl3}')">`;
             html += `</div>`;
         }
 
@@ -1178,6 +1199,13 @@
         content.innerHTML = htmlContent;
         modal.classList.remove('hidden');
     }
+    
+    // 이미지 확대 모달 표시 함수 (신규 추가)
+    function showZoomModal(imageUrl) {
+        elements.zoomImage.src = imageUrl;
+        elements.zoomModal.classList.remove('hidden');
+    }
+
 
     /* ============================ 유틸리티 및 이벤트 리스너 ============================ */
 
@@ -1396,7 +1424,7 @@
         document.getElementById('repair-manage').classList.add('hidden');
         document.getElementById('report-page').classList.add('hidden');
         
-        // --- 모달 이벤트 리스너 ---
+        // --- 상세 정보 모달 이벤트 리스너 ---
         elements.closeModalBtn.addEventListener('click', (e) => { 
             e.stopPropagation(); // 이벤트 버블링 방지
             elements.detailModal.classList.add('hidden');
@@ -1407,6 +1435,19 @@
             if (e.target.classList.contains('modal-bg')) {
                 elements.detailModal.classList.add('hidden');
                 currentModalData = { id: null, type: null };
+            }
+        });
+        
+        // --- 이미지 확대 모달 이벤트 리스너 (신규 추가) ---
+        elements.closeZoomBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            elements.zoomModal.classList.add('hidden');
+        });
+
+        elements.zoomModal.addEventListener('click', (e) => {
+            // 모달 배경 클릭 시 닫기
+            if (e.target.classList.contains('modal-bg') || e.target.id === 'zoom-modal') {
+                elements.zoomModal.classList.add('hidden');
             }
         });
 
