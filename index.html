@@ -1,4 +1,4 @@
-<!DOCTYPE TML>
+<!DOCTYPE HTML>
 <html lang="ko">
 <head>
   <meta charset="utf-8"/>
@@ -733,7 +733,7 @@
         document.getElementById('rtu-pressure-low').value = rtu.pressureLowLimit || '';
         document.getElementById('rtu-notes').value = rtu.notes || '';
         
-        // 수정 모드 ID 설정
+        // 수정 모드 ID 설정 (가장 중요: 이 필드가 수정 시 기준 ID가 됨)
         elements.rtuIdForModification.value = id; 
         
         // 이미지 로드 (Base64 데이터)
@@ -1059,35 +1059,42 @@
     }
 
 
-    /* ============================ 폼 제출 이벤트 리스너 (RTU 중복 체크 로직 포함) ============================ */
+    /* ============================ 폼 제출 이벤트 리스너 (RTU 중복 체크 로직 포함 - 수정됨) ============================ */
     elements.rtuForm.addEventListener('submit', function(e) {
         e.preventDefault();
         
         const formData = new FormData(elements.rtuForm);
         const newRtu = Object.fromEntries(formData.entries());
         
-        const rtuId = newRtu.name.trim();
+        let definitiveRtuId;
 
-        if (!rtuId) {
-            alert('RTU 등록번호/ID는 필수 입력 항목입니다.');
-            return;
-        }
-
-        // 유닛 이름 중복 저장 방지 로직 (신규 등록 모드에서만 체크)
         if (currentRtuMode === 'new') {
-            // trim() 처리된 rtuId를 사용하여 기존 목록에 동일한 ID가 있는지 확인
-            if (rtuList.some(r => r.id === rtuId)) {
-                alert(`오류: [${rtuId}] 이름을 가진 RTU가 이미 등록되어 있습니다. 다른 이름으로 등록하거나 '정보 수정' 모드를 사용하세요.`);
+            definitiveRtuId = newRtu.name.trim(); // 신규 등록 시에는 'name' 필드 사용
+            
+            if (!definitiveRtuId) {
+                alert('RTU 등록번호/ID는 필수 입력 항목입니다.');
+                return;
+            }
+
+            // 중복 체크 (신규 등록 시에만)
+            if (rtuList.some(r => r.id === definitiveRtuId)) {
+                alert(`오류: [${definitiveRtuId}] 이름을 가진 RTU가 이미 등록되어 있습니다. 다른 이름으로 등록하거나 '정보 수정' 모드를 사용하세요.`);
                 return; // 중복이므로 저장 중단
             }
-        } else {
-            // 수정 모드 시도 시, ID가 폼의 ID와 일치하는지 확인 (readOnly로 보호)
-            if (newRtu.rtuIdForModification !== rtuId) {
-                 alert('오류: 수정 모드에서 RTU ID가 일치하지 않습니다.');
-                 return;
+
+        } else { // 'modify' 모드
+            // 수정 모드에서는 숨겨진 필드의 ID를 최종 ID로 사용
+            definitiveRtuId = newRtu.rtuIdForModification; 
+            
+            if (!definitiveRtuId) {
+                alert('오류: 수정할 RTU가 선택되지 않았거나 정보 로드에 실패했습니다. 목록에서 장비를 다시 선택해주세요.');
+                return;
             }
+            // 기존의 newRtu.rtuIdForModification !== rtuId 체크 로직을 제거하여 오류 발생을 방지함
         }
         
+        const rtuId = definitiveRtuId; // 최종 확정된 ID를 변수에 할당
+
         // 이미지 Base64 데이터 추가
         newRtu.imageUrl1 = imageBase64Data.imageUrl1;
         newRtu.imageUrl2 = imageBase64Data.imageUrl2;
