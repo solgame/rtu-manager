@@ -119,6 +119,10 @@
                         <div>
                             <label for="rtu-name" class="block text-sm font-medium text-gray-700">RTU 등록번호/ID *</label>
                             <input type="text" id="rtu-name" name="name" required class="mt-1 block w-full border-gray-300 rounded-md shadow-sm p-2 border focus:ring-blue-500">
+                            
+                            <select id="rtu-modify-select" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm p-2 border focus:ring-blue-500 hidden" onchange="handleRtuSelectChange(this.value)">
+                                <option value="">-- 수정할 RTU를 선택하세요 --</option>
+                            </select>
                         </div>
                     </div>
 
@@ -344,7 +348,7 @@
                 
                 <div class="border p-4 rounded-lg bg-red-50 space-y-3">
                     <h3 class="text-lg font-semibold text-red-800">온도 측정</h3>
-                    <div class="grid grid-cols-3 gap-3">
+                    <div class="grid grid-cols-2 gap-3">
                         <div>
                             <label for="superheat" class="block text-sm font-medium text-gray-700">과열도 (℉)</label>
                             <input type="number" step="0.1" id="superheat" name="superheat" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm p-2 border">
@@ -352,10 +356,6 @@
                         <div>
                             <label for="subcool" class="block text-sm font-medium text-gray-700">과냉도 (℉)</label>
                             <input type="number" step="0.1" id="subcool" name="subcool" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm p-2 border">
-                        </div>
-                         <div>
-                            <label for="evap-temp" class="block text-sm font-medium text-gray-700">증발 온도 (℉)</label>
-                            <input type="number" step="0.1" id="evap-temp" name="evapTemp" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm p-2 border">
                         </div>
                     </div>
                 </div>
@@ -482,7 +482,6 @@
         REPAIR: 'repairList'
     };
     
-    // FIX 2: 이미지 데이터를 임시로 저장할 전역 객체
     let imageBase64Data = { imageUrl1: '', imageUrl2: '', imageUrl3: '' };
 
     function loadList(key) {
@@ -544,13 +543,14 @@
         rtuIdForModification: document.getElementById('rtu-id-for-modification'),
         rtuIdContainer: document.getElementById('rtu-id-container'),
         rtuSubmitBtn: document.getElementById('rtu-submit-btn'),
+        rtuModifySelect: document.getElementById('rtu-modify-select'), // NEW: 수정 모드 Select 메뉴
 
         imagePreviewContainer: document.getElementById('image-preview-container'),
         imagePreview1: document.getElementById('image-preview-1'),
         imagePreview2: document.getElementById('image-preview-2'),
         imagePreview3: document.getElementById('image-preview-3'),
         
-        // FIX 4: 대시보드 및 보고서 관련
+        // 대시보드 및 보고서 관련
         dashboardTotal: document.getElementById('dashboard-total'),
         dashboardRunning: document.getElementById('dashboard-running'),
         dashboardStopped: document.getElementById('dashboard-stopped'),
@@ -604,23 +604,19 @@
         }
     }
     
-    // Issue 1: 이미지 확대 로직 분리
     function openImageInNewTab(url, event) {
-        event.preventDefault(); // 앵커 태그의 기본 동작 방지
-        event.stopPropagation(); // 모달 닫힘 방지
+        event.preventDefault(); 
+        event.stopPropagation(); 
         
-        // Base64 URL이 너무 길어 새 창에서 열리지 않는 경우를 대비해 window.open 사용
         if (url.startsWith('data:image')) {
             const newWindow = window.open();
             newWindow.document.write(`<img src="${url}" style="max-width: 100%; height: auto;">`);
             newWindow.document.title = '확대 이미지';
             newWindow.document.close();
         } else {
-             // 일반 URL의 경우
              window.open(url, '_blank');
         }
     }
-
 
     function populateRtuSelects() {
         const optionsHtml = rtuList.map(rtu => 
@@ -629,6 +625,7 @@
 
         elements.inspectionRtuIdSelect.innerHTML = '<option value="">-- RTU를 선택하세요 --</option>' + optionsHtml;
         elements.repairRtuIdSelect.innerHTML = '<option value="">-- RTU를 선택하세요 --</option>' + optionsHtml;
+        elements.rtuModifySelect.innerHTML = '<option value="">-- 수정할 RTU를 선택하세요 --</option>' + optionsHtml; // 요청 3: 수정 모드 Select 메뉴 업데이트
     }
 
     /* ============================ RTU 폼 관리 ============================ */
@@ -654,11 +651,16 @@
         
         // 날짜 필드 초기화
         document.getElementById('rtu-date').value = new Date().toISOString().split('T')[0];
+        
+        // Select 필드 초기화
+        elements.rtuModifySelect.value = ''; // Select 필드 값 초기화
     }
 
     function switchRtuMode(mode) {
         currentRtuMode = mode;
         resetRtuForm();
+        const rtuNameInput = document.getElementById('rtu-name');
+        
         if (mode === 'new') {
             elements.rtuFormTitle.textContent = 'RTU 장비 신규 등록';
             elements.rtuSubmitBtn.textContent = 'RTU 정보 저장';
@@ -666,8 +668,10 @@
             elements.modeNewBtn.classList.remove('bg-gray-200', 'text-gray-700');
             elements.modeModifyBtn.classList.remove('bg-blue-600', 'text-white');
             elements.modeModifyBtn.classList.add('bg-gray-200', 'text-gray-700');
-            document.getElementById('rtu-name').readOnly = false; // 이름 수정 가능
-            document.getElementById('rtu-name').value = '';
+            
+            rtuNameInput.readOnly = false; 
+            rtuNameInput.classList.remove('hidden'); // 신규 입력 필드 표시
+            elements.rtuModifySelect.classList.add('hidden'); // 선택 메뉴 숨김
 
         } else {
             elements.rtuFormTitle.textContent = 'RTU 장비 정보 수정';
@@ -676,8 +680,25 @@
             elements.modeModifyBtn.classList.remove('bg-gray-200', 'text-gray-700');
             elements.modeNewBtn.classList.remove('bg-blue-600', 'text-white');
             elements.modeNewBtn.classList.add('bg-gray-200', 'text-gray-700');
-            document.getElementById('rtu-name').readOnly = true; 
-            alert('목록에서 수정할 장비를 선택해주세요.');
+            
+            rtuNameInput.readOnly = true; 
+            rtuNameInput.classList.add('hidden'); // 신규 입력 필드 숨김
+            elements.rtuModifySelect.classList.remove('hidden'); // 선택 메뉴 표시
+            
+            if(rtuList.length > 0 && elements.rtuModifySelect.value === "") {
+                alert('목록에서 수정할 장비를 선택해주세요.');
+            }
+        }
+    }
+    
+    // 요청 3: 수정 모드에서 RTU 선택 시 데이터 로드
+    function handleRtuSelectChange(rtuId) {
+        if (rtuId) {
+            loadRtuForEdit(rtuId);
+        } else {
+            // "수정할 RTU를 선택하세요" 선택 시 폼 초기화
+            resetRtuForm();
+            switchRtuMode('modify'); 
         }
     }
     
@@ -735,6 +756,9 @@
         
         // 수정 모드 ID 설정 (가장 중요: 이 필드가 수정 시 기준 ID가 됨)
         elements.rtuIdForModification.value = id; 
+        
+        // Select 메뉴 값 설정 (UI 일치)
+        elements.rtuModifySelect.value = id; 
         
         // 이미지 로드 (Base64 데이터)
         imageBase64Data.imageUrl1 = rtu.imageUrl1 || '';
@@ -885,7 +909,7 @@
         });
     }
 
-    /* ============================ 상세 모달 및 이미지 확대 (Issue 1) ============================ */
+    /* ============================ 상세 모달 및 이미지 확대 ============================ */
     function showRtuDetail(rtuId) {
         const rtu = rtuList.find(r => r.id === rtuId);
         if (!rtu) return;
@@ -908,7 +932,6 @@
         </div>`;
 
         let imageHtml = '';
-        // Issue 1 수정: a 태그의 href 대신 openImageInNewTab 함수 사용
         [rtu.imageUrl1, rtu.imageUrl2, rtu.imageUrl3].filter(url => url).forEach((url, index) => {
             imageHtml += `<div class="mb-4 pt-4 border-t border-gray-200">
                 <h4 class="text-md font-semibold text-gray-800 mb-2">장비 사진 ${index + 1} (클릭 시 확대)</h4>
@@ -964,10 +987,9 @@
             </div>
             
             <h4 class="text-md font-semibold text-gray-800 mt-4 border-t pt-2">온도 측정</h4>
-            <div class="grid grid-cols-3 gap-2 text-sm">
+            <div class="grid grid-cols-2 gap-2 text-sm">
                 <p>과열도: <strong>${inspection.superheat ? inspection.superheat + ' ℉' : 'N/A'}</strong></p>
                 <p>과냉도: <strong>${inspection.subcool ? inspection.subcool + ' ℉' : 'N/A'}</strong></p>
-                <p>증발 온도: <strong>${inspection.evapTemp ? inspection.evapTemp + ' ℉' : 'N/A'}</strong></p>
             </div>
 
             <p class="mt-4"><strong>특이사항 및 조치 내용:</strong> <br><span class="whitespace-pre-wrap block bg-gray-50 p-3 rounded-lg">${inspection.notes || '없음'}</span></p>
@@ -1001,7 +1023,6 @@
 
     /* ============================ 대시보드 및 보고서 ============================ */
     function updateDashboard() {
-        // FIX 4: 대시보드 데이터 계산 및 표시
         elements.dashboardTotal.textContent = rtuList.length;
         elements.dashboardRunning.textContent = rtuList.filter(r => r.status === '작동중').length;
         elements.dashboardStopped.textContent = rtuList.filter(r => r.status === '정지됨').length;
@@ -1032,7 +1053,6 @@
     }
 
     function renderReportPage() {
-        // FIX 4: 보고서 페이지에 데이터 표시
         elements.reportTotalRtu.textContent = rtuList.length;
         elements.reportTotalInspection.textContent = inspectionList.length;
         elements.reportTotalRepair.textContent = repairList.length;
@@ -1055,11 +1075,11 @@
         if (tabId === 'inspection-manage') renderInspectionList();
         if (tabId === 'repair-manage') renderRepairList();
         if (tabId === 'dashboard') updateDashboard();
-        if (tabId === 'report-page') renderReportPage(); // FIX 4: 보고서 렌더링 추가
+        if (tabId === 'report-page') renderReportPage(); 
     }
 
 
-    /* ============================ 폼 제출 이벤트 리스너 (RTU 중복 체크 로직 포함 - 수정됨) ============================ */
+    /* ============================ 폼 제출 이벤트 리스너 ============================ */
     elements.rtuForm.addEventListener('submit', function(e) {
         e.preventDefault();
         
@@ -1090,10 +1110,9 @@
                 alert('오류: 수정할 RTU가 선택되지 않았거나 정보 로드에 실패했습니다. 목록에서 장비를 다시 선택해주세요.');
                 return;
             }
-            // 기존의 newRtu.rtuIdForModification !== rtuId 체크 로직을 제거하여 오류 발생을 방지함
         }
         
-        const rtuId = definitiveRtuId; // 최종 확정된 ID를 변수에 할당
+        const rtuId = definitiveRtuId; 
 
         // 이미지 Base64 데이터 추가
         newRtu.imageUrl1 = imageBase64Data.imageUrl1;
@@ -1135,6 +1154,7 @@
         saveList(STORAGE_KEYS.INSPECTION, inspectionList);
         renderInspectionList();
         e.target.reset(); 
+        alert('점검 기록이 성공적으로 저장되었습니다.'); // 요청 2: 저장 메시지 추가
     });
 
     // 수리 기록 폼 제출 
@@ -1148,16 +1168,16 @@
         saveList(STORAGE_KEYS.REPAIR, repairList);
         renderRepairList();
         e.target.reset(); 
+        alert('수리 기록이 성공적으로 저장되었습니다.'); // 요청 2: 저장 메시지 추가
     });
     
-    /* ============================ CSV 다운로드 기능 (Issue 2) ============================ */
+    /* ============================ CSV 다운로드 기능 ============================ */
     
     function convertToCsv(dataArray) {
         if (!dataArray || dataArray.length === 0) {
             return '';
         }
 
-        // CSV 헤더 생성 (모든 키 포함)
         const allKeys = new Set();
         dataArray.forEach(obj => {
             Object.keys(obj).forEach(key => allKeys.add(key));
@@ -1165,15 +1185,12 @@
         const headers = Array.from(allKeys);
         const csvRows = [];
         
-        // UTF-8 BOM 추가하여 엑셀에서 한글 깨짐 방지
         csvRows.push('\ufeff' + headers.join(','));
 
-        // 데이터 행 생성
         for (const row of dataArray) {
             const values = headers.map(header => {
                 const value = row[header] === undefined || row[header] === null ? '' : String(row[header]);
                 
-                // CSV 포맷팅: 따옴표 안의 따옴표는 두 개로 이스케이프, 쉼표나 개행문자가 포함된 경우 전체를 따옴표로 감쌈
                 const escaped = value.replace(/"/g, '""'); 
                 if (escaped.includes(',') || escaped.includes('\n') || escaped.includes('\r') || escaped !== value) {
                     return `"${escaped}"`;
@@ -1199,7 +1216,6 @@
             link.click();
             document.body.removeChild(link);
         } else {
-            // 브라우저가 Blob을 지원하지 않는 경우 대비
             alert('죄송합니다. 이 브라우저에서는 파일 다운로드를 지원하지 않습니다.');
         }
     }
@@ -1207,22 +1223,18 @@
     function downloadDataAsCsv() {
         const timestamp = new Date().toISOString().replace(/:/g, '-').split('.')[0];
 
-        // 1. RTU 데이터 다운로드
         const rtuCsv = convertToCsv(rtuList);
         if (rtuCsv) {
             downloadCsvFile(`rtu_data_${timestamp}.csv`, rtuCsv);
         }
 
-        // 2. 점검 기록 다운로드
         const inspectionCsv = convertToCsv(inspectionList);
         if (inspectionCsv) {
-            // 딜레이를 주어 파일 이름 충돌 방지 및 브라우저 혼란 방지 (필수 아님, 안전 장치)
             setTimeout(() => {
                 downloadCsvFile(`inspection_data_${timestamp}.csv`, inspectionCsv);
             }, 1000); 
         }
 
-        // 3. 수리 기록 다운로드
         const repairCsv = convertToCsv(repairList);
         if (repairCsv) {
             setTimeout(() => {
@@ -1287,7 +1299,7 @@
             });
         });
 
-        // Issue 2 수정: 다운로드 버튼 로직 연결
+        // 다운로드 버튼 로직 연결
         document.getElementById('download-data-btn').addEventListener('click', downloadDataAsCsv);
         
         // 전역 함수 등록
@@ -1298,7 +1310,8 @@
         window.showRepairDetail = showRepairDetail;
         window.previewImage = previewImage;
         window.switchRtuMode = switchRtuMode;
-        window.openImageInNewTab = openImageInNewTab; // Issue 1 추가
+        window.openImageInNewTab = openImageInNewTab; 
+        window.handleRtuSelectChange = handleRtuSelectChange; // 요청 3: 새 핸들러 등록
 
     }
 
