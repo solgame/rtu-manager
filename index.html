@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8"/>
   <meta name="viewport" content="width=device-width,initial-scale=1"/>
-  <title>RTU 통합 관리 시스템 (Firebase 동기화 최종 버전)</title>
+  <title>RTU 통합 관리 시스템 (Firebase 동기화 최종)</title>
   
   <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
   <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-firestore.js"></script>
@@ -103,7 +103,7 @@
         <h2 class="text-2xl font-semibold mb-4 text-gray-700">통합 보고서</h2>
         <div class="bg-green-50 border-l-4 border-green-400 p-4 mb-4">
             <p class="font-bold text-green-700">정보:</p>
-            <p class="text-sm text-green-600">기간별/RTU별 보고서 생성 및 데이터 필터링 기능을 구현할 수 있는 영역입니다. (현재 UI만 제공)</p>
+            <p class="text-sm text-green-600">기간별/RTU별 보고서 생성 및 데이터 필터링 기능을 구현할 수 있는 영역입니다.</p>
         </div>
         <div class="p-6 bg-white rounded-lg shadow">
             <p class="text-lg font-semibold mb-4">보고서 생성 옵션</p>
@@ -126,18 +126,24 @@
 
   <div id="detail-modal" class="modal-bg fixed inset-0 z-50 flex items-center justify-center p-4 hidden">
     <div class="modal-content bg-white rounded-xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto p-6 sm:p-8">
-      <h3 id="modal-title" class="text-2xl font-bold mb-6 text-gray-800 border-b pb-2">기록 상세/등록/수정</h3>
+      <h3 id="modal-title" class="text-2xl font-bold mb-6 text-gray-800 border-b pb-2">RTU 등록</h3>
       <form id="data-form" class="space-y-4">
         <input type="hidden" id="data-doc-id" name="docId">
-        <input type="hidden" id="data-type" value="rtu"> <input type="hidden" id="data-mode" value="add"> <div id="rtu-fields" class="space-y-4">
-            <div>
-                <label for="rtu-name" class="block text-sm font-medium text-gray-700">장비 명칭</label>
-                <input type="text" id="rtu-name" name="name" required class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2">
+        <input type="hidden" id="data-type" value="rtu">
+        <input type="hidden" id="data-mode" value="add">
+
+        <div id="rtu-fields" class="space-y-4">
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                    <label for="rtu-name" class="block text-sm font-medium text-gray-700">장비 명칭</label>
+                    <input type="text" id="rtu-name" name="name" required class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2">
+                </div>
+                <div>
+                    <label for="rtu-location" class="block text-sm font-medium text-gray-700">설치 장소</label>
+                    <input type="text" id="rtu-location" name="location" required class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2">
+                </div>
             </div>
-            <div>
-                <label for="rtu-location" class="block text-sm font-medium text-gray-700">설치 장소</label>
-                <input type="text" id="rtu-location" name="location" required class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2">
-            </div>
+
             <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                     <label for="rtu-model" class="block text-sm font-medium text-gray-700">장비 모델</label>
@@ -148,6 +154,7 @@
                     <input type="text" id="rtu-serial" name="serial" required class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2">
                 </div>
             </div>
+
             <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                     <label for="rtu-manufacturer" class="block text-sm font-medium text-gray-700">제조사</label>
@@ -158,6 +165,7 @@
                     <input type="text" id="rtu-firmwareVersion" name="firmwareVersion" class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2">
                 </div>
             </div>
+
             <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
                 <div>
                     <label for="rtu-installDate" class="block text-sm font-medium text-gray-700">설치 일자</label>
@@ -176,6 +184,7 @@
                     </select>
                 </div>
             </div>
+            
             <div>
                 <label for="rtu-notes" class="block text-sm font-medium text-gray-700">특이 사항</label>
                 <textarea id="rtu-notes" name="notes" rows="3" class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2"></textarea>
@@ -287,7 +296,7 @@
     const db = firebase.firestore();
 
     // =================================================================
-    // 3. 글로벌 데이터 및 요소 관리 (변수들은 이전과 동일)
+    // 3. 글로벌 데이터 및 요소 관리
     // =================================================================
     let rtuList = [];
     let inspectionList = [];
@@ -295,7 +304,8 @@
 
     const elements = {
         rtuListContainer: document.getElementById('rtu-list-container'),
-        // ... (이전과 동일)
+        inspectionListContainer: document.getElementById('inspection-list-container'),
+        repairListContainer: document.getElementById('repair-list-container'),
         detailModal: document.getElementById('detail-modal'),
         closeModalBtn: document.getElementById('close-modal-btn'),
         dataForm: document.getElementById('data-form'),
@@ -319,12 +329,16 @@
     };
 
     // =================================================================
-    // 4. 데이터 로드 로직 (onSnapshot으로 실시간 동기화) - 이전과 동일
+    // 4. 데이터 로드 로직 (onSnapshot: Firebase 실시간 동기화)
     // =================================================================
+
     function initFirebaseListeners() {
-        // RTU, 점검, 수리 목록 실시간 동기화 (이전과 동일)
+        // RTU 목록 실시간 동기화
         db.collection(COLLECTIONS.RTU).orderBy('name', 'asc').onSnapshot(snapshot => {
-            rtuList = snapshot.docs.map(doc => ({ docId: doc.id, ...doc.data() }));
+            rtuList = snapshot.docs.map(doc => ({
+                docId: doc.id,
+                ...doc.data()
+            }));
             renderRtuList();
             populateRtuSelects(); 
             updateDashboard(); 
@@ -332,16 +346,24 @@
             console.error("RTU List fetching error:", error);
         });
 
+        // 점검 기록 실시간 동기화
         db.collection(COLLECTIONS.INSPECTION).orderBy('date', 'desc').onSnapshot(snapshot => {
-            inspectionList = snapshot.docs.map(doc => ({ docId: doc.id, ...doc.data() }));
+            inspectionList = snapshot.docs.map(doc => ({
+                docId: doc.id,
+                ...doc.data()
+            }));
             renderInspectionList();
             updateDashboard(); 
         }, error => {
             console.error("Inspection List fetching error:", error);
         });
 
+        // 수리 기록 실시간 동기화
         db.collection(COLLECTIONS.REPAIR).orderBy('date', 'desc').onSnapshot(snapshot => {
-            repairList = snapshot.docs.map(doc => ({ docId: doc.id, ...doc.data() }));
+            repairList = snapshot.docs.map(doc => ({
+                docId: doc.id,
+                ...doc.data()
+            }));
             renderRepairList();
             updateDashboard(); 
         }, error => {
@@ -350,7 +372,7 @@
     }
 
     // =================================================================
-    // 5. CRUD 함수 (Firebase Firestore 사용) - 오류 처리 강화
+    // 5. CRUD 함수 (Firebase Firestore 사용 및 오류 처리 강화)
     // =================================================================
 
     async function handleDataSubmit(e) {
@@ -362,8 +384,10 @@
         const formData = new FormData(elements.dataForm);
         const data = {};
         
+        // 폼 데이터 객체화
         formData.forEach((value, key) => {
             if (key !== 'docId' && key !== 'mode' && key !== 'file') {
+                 // isCompleted 필드는 문자열 "true" / "false"를 불리언으로 변환
                 if (key === 'isCompleted') {
                     data[key] = (value === 'true');
                 } else {
@@ -372,9 +396,8 @@
             }
         });
         
-        // **저장 버튼 먹통 문제 해결을 위한 오류 처리 강화**
         try {
-            elements.saveDataBtn.disabled = true; // 중복 제출 방지 및 먹통 현상 시도중임을 표시
+            elements.saveDataBtn.disabled = true;
             elements.saveDataBtn.textContent = '저장 중...';
 
             if (mode === 'add') {
@@ -394,35 +417,73 @@
 
         } catch (error) {
             console.error(`Error saving ${type}:`, error);
-            // **오류 메시지를 강제로 띄웁니다.**
+            // **저장 먹통 현상 해결을 위한 에러 메시지 강제 출력**
             alert(`
-                🚨 데이터 저장 중 치명적인 오류가 발생했습니다! 🚨
+                🚨 데이터 저장 중 오류가 발생했습니다! 🚨
                 
-                원인: Firebase Firestore 보안 규칙 문제일 가능성이 높습니다.
+                [가장 흔한 원인: Firebase Firestore 보안 규칙]
+                Firebase 콘솔의 Firestore 규칙을 "allow read, write: if true;"로 설정했는지 **다시 한번 확인**해주세요.
                 
                 [에러 상세 내용]
                 ${error.message}
-                
-                Firebase 콘솔에서 Firestore 규칙을 반드시 'allow read, write: if true;'로 변경해주세요.
             `);
 
         } finally {
             elements.saveDataBtn.disabled = false;
-            elements.saveDataBtn.textContent = (mode === 'add') ? '등록' : '수정 완료';
+            elements.saveDataBtn.textContent = (mode === 'add') ? '저장' : '수정 완료';
         }
     }
 
-    // 삭제 함수들은 이전과 동일 (생략)
-    async function deleteRtu(docId) { /* ... */ }
-    async function deleteInspection(docId) { /* ... */ }
-    async function deleteRepair(docId) { /* ... */ }
+    // 삭제 함수 (Firebase 연동)
+    async function deleteRtu(docId) {
+        if (!confirm('정말로 이 RTU를 삭제하시겠습니까? 관련된 모든 점검 및 수리 기록도 삭제됩니다.')) return;
+        try {
+            await db.collection(COLLECTIONS.RTU).doc(docId).delete();
+            // 관련 기록 일괄 삭제
+            const batch = db.batch();
+            const inspectionRefs = await db.collection(COLLECTIONS.INSPECTION).where('rtuDocId', '==', docId).get();
+            inspectionRefs.docs.forEach(doc => batch.delete(doc.ref));
+            const repairRefs = await db.collection(COLLECTIONS.REPAIR).where('rtuDocId', '==', docId).get();
+            repairRefs.docs.forEach(doc => batch.delete(doc.ref));
+            await batch.commit();
+            alert('RTU 및 관련 기록이 모두 삭제되었습니다.');
+        } catch (error) {
+            console.error("Error deleting RTU:", error);
+            alert(`데이터 삭제 중 오류가 발생했습니다: ${error.message}`);
+        }
+    }
+
+    async function deleteInspection(docId) {
+        if (!confirm('정말로 이 점검 기록을 삭제하시겠습니까?')) return;
+        try {
+            await db.collection(COLLECTIONS.INSPECTION).doc(docId).delete();
+            alert('점검 기록이 삭제되었습니다.');
+        } catch (error) {
+            console.error("Error deleting inspection:", error);
+            alert(`삭제 중 오류 발생: ${error.message}`);
+        }
+    }
+
+    async function deleteRepair(docId) {
+        if (!confirm('정말로 이 수리 기록을 삭제하시겠습니까?')) return;
+        try {
+            await db.collection(COLLECTIONS.REPAIR).doc(docId).delete();
+            alert('수리 기록이 삭제되었습니다.');
+        } catch (error) {
+            console.error("Error deleting repair:", error);
+            alert(`삭제 중 오류 발생: ${error.message}`);
+        }
+    }
+
 
     // =================================================================
-    // 6. UI 및 헬퍼 함수 (필드 설정 로직 보강)
+    // 6. UI 및 헬퍼 함수
     // =================================================================
-
-    function updateDashboard() { /* ... (이전과 동일) */ 
+    
+    // 대시보드 데이터 업데이트 함수 (이전과 동일)
+    function updateDashboard() {
         document.getElementById('dashboard-total-rtu').textContent = rtuList.length;
+
         const thirtyDaysAgo = new Date();
         thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
         const recentInspections = inspectionList.filter(item => {
@@ -431,16 +492,17 @@
             return date > thirtyDaysAgo;
         });
         document.getElementById('dashboard-recent-inspection').textContent = recentInspections.length;
+
         const unresolvedRepairs = repairList.filter(item => item.isCompleted === false || item.isCompleted === 'false').length; 
         document.getElementById('dashboard-unresolved-repair').textContent = unresolvedRepairs;
     }
 
-    function openModal() { /* ... (이전과 동일) */
+    function openModal() {
         elements.detailModal.classList.remove('hidden');
         document.body.style.overflow = 'hidden';
     }
 
-    function closeModal() { /* ... (이전과 동일) */
+    function closeModal() {
         elements.detailModal.classList.add('hidden');
         document.body.style.overflow = '';
         elements.dataForm.reset();
@@ -449,7 +511,7 @@
         document.getElementById('inspection-image-preview-area').innerHTML = ''; 
     }
 
-    function switchTab(tabName) { /* ... (이전과 동일) */
+    function switchTab(tabName) {
         elements.tabBtns.forEach(btn => {
             btn.classList.toggle('tab-active', btn.dataset.tab === tabName);
         });
@@ -458,6 +520,7 @@
             content.classList.toggle('hidden', content.id !== `${tabName}-tab-content`);
         });
         
+        // +버튼 제어
         document.getElementById('add-rtu-btn').classList.toggle('hidden', tabName !== 'rtu');
         document.getElementById('add-inspection-btn').classList.toggle('hidden', tabName !== 'inspection');
         document.getElementById('add-repair-btn').classList.toggle('hidden', tabName !== 'repair');
@@ -467,29 +530,35 @@
         }
     }
 
-    function switchDataFields(type, mode) { /* ... (이전과 동일) */
+    // 모달 필드 전환 함수
+    function switchDataFields(type, mode) {
         elements.rtuFields.classList.toggle('hidden', type !== 'rtu');
         elements.inspectionFields.classList.toggle('hidden', type !== 'inspection');
         elements.repairFields.classList.toggle('hidden', type !== 'repair');
+        
+        // 모달 타이틀 업데이트
+        elements.modalTitle.textContent = 
+            (type === 'rtu' ? 'RTU' : (type === 'inspection' ? '점검 기록' : '수리 기록')) 
+            + (mode === 'add' ? ' 등록' : (mode === 'edit' ? ' 수정' : ' 상세'));
 
         const isDetail = mode === 'detail';
         const fields = elements.dataForm.querySelectorAll('input, select, textarea');
         fields.forEach(field => {
             if (field.type !== 'hidden') {
+                // 상세 보기 모드에서만 비활성화
                 field.disabled = isDetail;
             }
         });
 
-        if (isDetail) {
-            document.getElementById('inspection-file').classList.add('hidden');
-        } else {
-            document.getElementById('inspection-file').classList.remove('hidden');
+        if (type === 'inspection') {
+            document.getElementById('inspection-file').classList.toggle('hidden', isDetail);
         }
 
         elements.saveDataBtn.classList.toggle('hidden', isDetail);
     }
     
-    function populateRtuSelects() { /* ... (이전과 동일) */
+    // 점검/수리 모달의 RTU 선택 목록을 채우는 함수
+    function populateRtuSelects() {
         const selectRtuIns = document.getElementById('inspection-rtu-id');
         const selectRtuRep = document.getElementById('repair-rtu-id');
 
@@ -506,25 +575,24 @@
         });
     }
 
-    function openAddModal(type) { /* ... (이전과 동일) */
-        elements.modalTitle.textContent = `${type.toUpperCase()} 등록`;
+    // 등록 모드로 모달 열기
+    function openAddModal(type) {
         elements.dataType.value = type;
         elements.dataMode.value = 'add';
         elements.dataDocId.value = '';
         elements.dataForm.reset();
-        elements.saveDataBtn.textContent = '등록';
+        elements.saveDataBtn.textContent = '저장';
         
         switchDataFields(type, 'add');
         openModal();
     }
     
-    // 수정 모드 함수 (데이터 필드 복원 로직 적용)
+    // 수정 모드 함수
     function editData(type, docId) {
         const list = (type === 'rtu') ? rtuList : (type === 'inspection' ? inspectionList : repairList);
         const data = list.find(item => item.docId === docId);
         if (!data) return;
 
-        elements.modalTitle.textContent = `${type.toUpperCase()} 수정: ${data.name || data.date}`;
         elements.dataType.value = type;
         elements.dataMode.value = 'edit';
         elements.dataDocId.value = docId;
@@ -533,8 +601,6 @@
         elements.dataForm.reset();
         for (const key in data) {
             const value = data[key];
-
-            // 필드 ID를 동적으로 생성 (rtu-name, inspection-date 등)
             const fieldId = `${type}-${key.toLowerCase().replace('docid', 'rtu-id')}`;
             const field = document.getElementById(fieldId);
             
@@ -555,19 +621,19 @@
         openModal();
     }
     
-    // 상세 정보 표시 함수 (이전과 동일)
-    function showDataDetail(type, docId) { /* ... */ 
+    // 상세 정보 표시 함수
+    function showDataDetail(type, docId) {
         const list = (type === 'rtu') ? rtuList : (type === 'inspection' ? inspectionList : repairList);
         const data = list.find(item => item.docId === docId);
         if (!data) return;
 
-        elements.modalTitle.textContent = `${type.toUpperCase()} 상세: ${data.name || data.date}`;
         elements.dataType.value = type;
         elements.dataMode.value = 'detail';
         elements.dataDocId.value = docId;
         
         elements.dataForm.reset();
         for (const key in data) {
+            // 상세 보기 시 값 설정 (날짜는 로컬 형식으로 변환)
             const dateValue = (data[key] && data[key].toDate) ? new Date(data[key].toDate()).toLocaleDateString() : data[key];
             const value = dateValue;
 
@@ -591,6 +657,7 @@
         switchDataFields(type, 'detail');
         elements.detailLogArea.classList.toggle('hidden', type !== 'rtu'); 
 
+        // RTU 상세 모드일 경우, 점검/수리 기록 렌더링
         if (type === 'rtu') {
             const rtuInspections = inspectionList.filter(i => i.rtuDocId === docId);
             const rtuRepairs = repairList.filter(r => r.rtuDocId === docId);
@@ -610,7 +677,7 @@
         openModal();
     }
     
-    // 렌더링 함수들 (RTU 목록에 복구된 상세 항목 추가)
+    // RTU 목록 렌더링
     function renderRtuList() {
         elements.rtuListContainer.innerHTML = rtuList.map(rtu => `
             <div class="bg-gray-50 p-4 rounded-lg shadow flex justify-between items-center">
@@ -627,48 +694,171 @@
         `).join('') || '<p class="text-gray-500">등록된 RTU가 없습니다.</p>';
     }
 
-    function renderInspectionList() { /* ... (이전과 동일) */ }
-    function renderRepairList() { /* ... (이전과 동일) */ }
-    function downloadDataAsCsv() { /* ... (이전과 동일) */ }
+    // 점검 목록 렌더링
+    function renderInspectionList() {
+        elements.inspectionListContainer.innerHTML = inspectionList.map(item => {
+            const rtu = rtuList.find(r => r.docId === item.rtuDocId);
+            const rtuName = rtu ? rtu.name : '알 수 없는 RTU';
+            return `
+                <div class="bg-gray-50 p-4 rounded-lg shadow flex justify-between items-center">
+                    <div class="flex-1 min-w-0 cursor-pointer" onclick="showDataDetail('inspection', '${item.docId}')">
+                        <p class="text-lg font-semibold text-indigo-800 truncate">${rtuName} (${item.date})</p>
+                        <p class="text-sm text-gray-600">점검자: ${item.inspector} / 결과: ${item.status}</p>
+                    </div>
+                    <div class="flex space-x-2 ml-4">
+                        <button onclick="editData('inspection', '${item.docId}')" class="text-yellow-600 hover:text-yellow-800 text-sm">수정</button>
+                        <button onclick="deleteInspection('${item.docId}')" class="text-red-600 hover:text-red-800 text-sm">삭제</button>
+                    </div>
+                </div>
+            `;
+        }).join('') || '<p class="text-gray-500">등록된 점검 기록이 없습니다.</p>';
+    }
+
+    // 수리 목록 렌더링
+    function renderRepairList() {
+        elements.repairListContainer.innerHTML = repairList.map(item => {
+            const rtu = rtuList.find(r => r.docId === item.rtuDocId);
+            const rtuName = rtu ? rtu.name : '알 수 없는 RTU';
+            const isCompletedText = item.isCompleted === true || item.isCompleted === 'true' ? '완료' : '미완료';
+            return `
+                <div class="bg-gray-50 p-4 rounded-lg shadow flex justify-between items-center">
+                    <div class="flex-1 min-w-0 cursor-pointer" onclick="showDataDetail('repair', '${item.docId}')">
+                        <p class="text-lg font-semibold text-orange-800 truncate">${rtuName} (${item.date})</p>
+                        <p class="text-sm text-gray-600">담당자: ${item.technician} / 상태: ${isCompletedText}</p>
+                    </div>
+                    <div class="flex space-x-2 ml-4">
+                        <button onclick="editData('repair', '${item.docId}')" class="text-yellow-600 hover:text-yellow-800 text-sm">수정</button>
+                        <button onclick="deleteRepair('${item.docId}')" class="text-red-600 hover:text-red-800 text-sm">삭제</button>
+                    </div>
+                </div>
+            `;
+        }).join('') || '<p class="text-gray-500">등록된 수리 기록이 없습니다.</p>';
+    }
+    
+    // CSV 다운로드 함수 (Firebase 연동)
+    function downloadDataAsCsv() {
+        alert('CSV 다운로드 기능이 곧 실행됩니다. (Firebase 데이터 기반)');
+        let csvContent = "data:text/csv;charset=utf-8,\uFEFF";
+        
+        // RTU 목록
+        csvContent += "=== RTU 목록 ===\n";
+        const rtuHeaders = ["DocID", "Name", "Location", "Model", "Serial", "Manufacturer", "FirmwareVersion", "InstallDate", "WarrantyExpiration", "OperatingStatus", "Notes", "CreatedAt"];
+        csvContent += rtuHeaders.join(",") + "\n";
+        rtuList.forEach(item => {
+            const row = [
+                item.docId,
+                `"${item.name.replace(/"/g, '""')}"`,
+                `"${item.location.replace(/"/g, '""')}"`,
+                `"${item.model || ''}"`,
+                `"${item.serial || ''}"`,
+                `"${item.manufacturer || ''}"`,
+                `"${item.firmwareVersion || ''}"`,
+                `"${item.installDate || ''}"`,
+                `"${item.warrantyExpiration || ''}"`,
+                `"${item.operatingStatus || ''}"`,
+                `"${item.notes || ''}"`,
+                item.createdAt ? new Date(item.createdAt.toDate()).toISOString() : 'N/A'
+            ].join(",");
+            csvContent += row + "\n";
+        });
+        
+        // 점검 기록
+        csvContent += "\n=== 점검 기록 ===\n";
+        const inspectionHeaders = ["DocID", "RTU_DocID", "Date", "Inspector", "Status", "Result", "CreatedAt"];
+        csvContent += inspectionHeaders.join(",") + "\n";
+        inspectionList.forEach(item => {
+             const row = [
+                item.docId,
+                item.rtuDocId,
+                `"${item.date || ''}"`,
+                `"${item.inspector || ''}"`,
+                `"${item.status || ''}"`,
+                `"${item.result ? item.result.replace(/"/g, '""').replace(/\n/g, ' ') : ''}"`,
+                item.createdAt ? new Date(item.createdAt.toDate()).toISOString() : 'N/A'
+            ].join(",");
+            csvContent += row + "\n";
+        });
+
+        // 수리 기록
+        csvContent += "\n=== 수리 기록 ===\n";
+        const repairHeaders = ["DocID", "RTU_DocID", "Date", "Technician", "Content", "IsCompleted", "CreatedAt"];
+        csvContent += repairHeaders.join(",") + "\n";
+        repairList.forEach(item => {
+             const row = [
+                item.docId,
+                item.rtuDocId,
+                `"${item.date || ''}"`,
+                `"${item.technician || ''}"`,
+                `"${item.content ? item.content.replace(/"/g, '""').replace(/\n/g, ' ') : ''}"`,
+                item.isCompleted ? 'TRUE' : 'FALSE',
+                item.createdAt ? new Date(item.createdAt.toDate()).toISOString() : 'N/A'
+            ].join(",");
+            csvContent += row + "\n";
+        });
+        
+        
+        const encodedUri = encodeURI(csvContent);
+        const link = document.createElement("a");
+        link.setAttribute("href", encodedUri);
+        link.setAttribute("download", `RTU_Integrated_Data_${new Date().toISOString().slice(0, 10)}.csv`);
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+    }
 
 
     // =================================================================
-    // 7. 이벤트 리스너 및 초기화 (이전과 동일)
+    // 7. 이벤트 리스너 및 초기화
     // =================================================================
 
     document.addEventListener('DOMContentLoaded', () => {
+        // Firebase 데이터 로드 리스너 초기화
         initFirebaseListeners(); 
+        
+        // 초기 탭 설정
         switchTab('dashboard');
 
+        // 등록 버튼 이벤트 연결
         document.getElementById('add-rtu-btn').addEventListener('click', () => openAddModal('rtu'));
         document.getElementById('add-inspection-btn').addEventListener('click', () => openAddModal('inspection'));
         document.getElementById('add-repair-btn').addEventListener('click', () => openAddModal('repair'));
 
+        // 데이터 저장 폼 이벤트 연결
         elements.dataForm.addEventListener('submit', handleDataSubmit);
+
+        // 모달 닫기 이벤트 연결
         elements.closeModalBtn.addEventListener('click', closeModal);
         elements.detailModal.addEventListener('click', (e) => {
             if (e.target.classList.contains('modal-bg')) {
                 closeModal();
             }
         });
+        
         document.addEventListener('keydown', (e) => {
             if (e.key === 'Escape' && !elements.detailModal.classList.contains('hidden')) {
                 closeModal();
             }
         });
+        
+        // 탭 버튼 이벤트 연결
         elements.tabBtns.forEach(btn => {
             btn.addEventListener('click', () => {
                 switchTab(btn.dataset.tab);
             });
         });
+
+        // 다운로드 버튼 로직 연결
         document.getElementById('download-data-btn').addEventListener('click', downloadDataAsCsv);
         
+        // 전역 함수 등록 (HTML에서 호출 가능하도록)
         window.editData = editData;
         window.deleteRtu = deleteRtu;
         window.deleteInspection = deleteInspection;
         window.deleteRepair = deleteRepair;
         window.showDataDetail = showDataDetail;
-        window.previewImage = () => alert("이미지 미리보기 기능은 Firebase Storage 연동이 필요합니다.");
+        
+        // 이미지 관련 기능은 Firebase Storage 연동이 필요하므로 알림 처리
+        window.previewImage = () => alert("이미지 기능은 Firebase Storage 연동이 필요합니다.");
         window.openImageInNewTab = () => alert("이미지 기능은 Firebase Storage 연동이 필요합니다.");
     });
   </script>
