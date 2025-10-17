@@ -3,10 +3,10 @@
 <head>
   <meta charset="utf-8"/>
   <meta name="viewport" content="width=device-width,initial-scale=1"/>
-  <title>RTU 통합 관리 시스템 (Firebase + 테스트 데이터 포함)</title>
+  <title>RTU 통합 관리 시스템 (Firebase 동기화 + 샘플데이터)</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <style>
-    body { font-family: Inter, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; background:#f3f4f6; }
+    body { font-family: Inter, system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; background:#f3f4f6; }
     .thumb { width:96px; height:72px; object-fit:cover; border-radius:6px; box-shadow:0 1px 4px rgba(0,0,0,0.08); }
     .hidden-file { position:absolute; left:-9999px; }
     .modal-bg { background: rgba(17,24,39,0.6); }
@@ -19,12 +19,10 @@
       <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center border-b pb-4 mb-4">
         <h1 class="text-3xl font-extrabold text-gray-900 flex items-center">RTU 통합 관리 시스템</h1>
         <div class="flex items-center space-x-3 mt-4 sm:mt-0">
-             <label for="csv-upload" class="bg-blue-600 text-white font-semibold py-2 px-4 rounded-full hover:bg-blue-700 transition duration-150 text-sm cursor-pointer">
-                CSV 업로드
-            </label>
-            <input type="file" id="csv-upload" accept=".csv" multiple class="hidden-file" onchange="handleDataUpload(event)">
-
-            <button id="download-data-btn" class="bg-gray-200 text-gray-700 font-semibold py-2 px-4 rounded-full hover:bg-gray-300 transition duration-150 text-sm" onclick="exportAllCSV()">데이터 CSV 다운로드</button>
+          <label for="csv-upload" class="bg-blue-600 text-white font-semibold py-2 px-4 rounded-full hover:bg-blue-700 transition duration-150 text-sm cursor-pointer">CSV 업로드</label>
+          <input type="file" id="csv-upload" accept=".csv" multiple class="hidden-file" onchange="handleDataUpload(event)">
+          <button id="download-data-btn" class="bg-gray-200 text-gray-700 font-semibold py-2 px-4 rounded-full hover:bg-gray-300 transition duration-150 text-sm" onclick="exportAllCSV()">데이터 CSV 다운로드</button>
+          <button id="add-sample-btn" class="bg-green-500 text-white font-semibold py-2 px-4 rounded-full hover:bg-green-600 transition duration-150 text-sm">🔄 테스트용 기본 데이터 생성</button>
         </div>
       </div>
 
@@ -82,32 +80,64 @@
               </div>
             </div>
           </div>
+        </div>
 
-          <!-- 🔄 테스트 데이터 생성 버튼 -->
-          <div class="mt-6 text-center">
-            <button onclick="generateSampleData()" class="bg-indigo-600 text-white font-semibold px-6 py-2 rounded-full hover:bg-indigo-700 transition">
-              🔄 테스트용 기본 데이터 생성
-            </button>
-            <p class="text-sm text-gray-500 mt-1">(Firebase에 샘플 RTU / 점검 / 수리 데이터가 자동 추가됩니다)</p>
+        <div id="rtu-manage" class="tab-page hidden">
+          <h2 class="text-xl font-bold text-gray-800 mb-4">RTU 등록 및 관리</h2>
+          <div id="rtu-list" class="space-y-3"></div>
+        </div>
+
+        <div id="inspection-manage" class="tab-page hidden">
+          <h2 class="text-xl font-bold text-gray-800 mb-4">점검 기록</h2>
+          <div id="inspection-list" class="space-y-3"></div>
+        </div>
+
+        <div id="repair-manage" class="tab-page hidden">
+          <h2 class="text-xl font-bold text-gray-800 mb-4">수리 기록</h2>
+          <div id="repair-list" class="space-y-3"></div>
+        </div>
+
+        <div id="report-page" class="tab-page hidden">
+          <h2 class="text-2xl font-bold text-gray-800 mb-4">시스템 운영 보고서</h2>
+          <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+            <div class="bg-indigo-50 p-6 rounded-xl shadow-lg border border-indigo-200">
+              <p class="text-sm font-medium text-indigo-600">총 등록 RTU</p>
+              <p id="report-total-rtu" class="text-3xl font-extrabold text-indigo-900 mt-1">0</p>
+            </div>
+            <div class="bg-pink-50 p-6 rounded-xl shadow-lg border border-pink-200">
+              <p class="text-sm font-medium text-pink-600">총 점검 기록 건수</p>
+              <p id="report-total-inspection" class="text-3xl font-extrabold text-pink-900 mt-1">0</p>
+            </div>
+            <div class="bg-teal-50 p-6 rounded-xl shadow-lg border border-teal-200">
+              <p class="text-sm font-medium text-teal-600">총 수리 기록 건수</p>
+              <p id="report-total-repair" class="text-3xl font-extrabold text-teal-900 mt-1">0</p>
+            </div>
           </div>
         </div>
       </div>
     </div>
   </div>
 
+  <div id="detail-modal" class="modal-bg hidden fixed inset-0 z-50 flex items-center justify-center p-4">
+    <div class="bg-white rounded-xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto p-6 relative">
+      <h3 id="modal-title" class="text-xl font-bold text-gray-800 mb-4 border-b pb-2">상세 정보</h3>
+      <div id="modal-content" class="text-gray-700 space-y-2 text-sm"><p>로딩 중...</p></div>
+      <button id="close-modal-btn" class="absolute top-4 right-4 text-gray-400 hover:text-gray-600 transition">✕</button>
+    </div>
+  </div>
+
   <script type="module">
-    import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-app.js";
-    import { getDatabase, ref, set, onValue, remove } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-database.js";
+    import { initializeApp } from 'https://www.gstatic.com/firebasejs/11.0.1/firebase-app.js';
+    import { getDatabase, ref, set, onValue, remove } from 'https://www.gstatic.com/firebasejs/11.0.1/firebase-database.js';
 
     const firebaseConfig = {
-      apiKey: "AIzaSyD6-IKznyhHIH6eGztJOioL0cDQ57MvNvs",
-      authDomain: "rtu-system-han.firebaseapp.com",
-      databaseURL: "https://rtu-system-han-default-rtdb.firebaseio.com",
-      projectId: "rtu-system-han",
-      storageBucket: "rtu-system-han.firebasestorage.app",
-      messagingSenderId: "960060003353",
-      appId: "1:960060003353:web:0185fc4a392235fab0c688",
-      measurementId: "G-L58S7K0264"
+      apiKey: 'AIzaSyD6-IKznyhHIH6eGztJOioL0cDQ57MvNvs',
+      authDomain: 'rtu-system-han.firebaseapp.com',
+      databaseURL: 'https://rtu-system-han-default-rtdb.firebaseio.com',
+      projectId: 'rtu-system-han',
+      storageBucket: 'rtu-system-han.firebasestorage.app',
+      messagingSenderId: '960060003353',
+      appId: '1:960060003353:web:0185fc4a392235fab0c688'
     };
 
     const app = initializeApp(firebaseConfig);
@@ -117,51 +147,46 @@
     let inspectionList = [];
     let repairList = [];
 
-    function snapObjToArray(obj){ return obj ? Object.keys(obj).map(k=>({ ...obj[k], id:k })) : []; }
+    onValue(ref(db, 'rtuList'), snap => { rtuList = snap.val() ? Object.values(snap.val()) : []; renderRtuList(); updateDashboard(); });
+    onValue(ref(db, 'inspectionList'), snap => { inspectionList = snap.val() ? Object.values(snap.val()) : []; renderInspectionList(); updateDashboard(); });
+    onValue(ref(db, 'repairList'), snap => { repairList = snap.val() ? Object.values(snap.val()) : []; renderRepairList(); updateDashboard(); });
 
-    onValue(ref(db,'rtuList'), snap=>{ rtuList = snapObjToArray(snap.val()); renderDashboard(); });
-    onValue(ref(db,'inspectionList'), snap=>{ inspectionList = snapObjToArray(snap.val()); renderDashboard(); });
-    onValue(ref(db,'repairList'), snap=>{ repairList = snapObjToArray(snap.val()); renderDashboard(); });
+    function renderRtuList(){ const c=document.getElementById('rtu-list'); c.innerHTML=rtuList.map(r=>`<div class='p-3 border rounded-lg bg-white'><b>${r.name}</b> - ${r.region||''} (${r.status||''})</div>`).join('')||'<p>데이터 없음</p>'; }
+    function renderInspectionList(){ const c=document.getElementById('inspection-list'); c.innerHTML=inspectionList.map(r=>`<div class='p-3 border rounded-lg bg-white'>${r.inspectionDate||''} - ${r.result||''}</div>`).join('')||'<p>데이터 없음</p>'; }
+    function renderRepairList(){ const c=document.getElementById('repair-list'); c.innerHTML=repairList.map(r=>`<div class='p-3 border rounded-lg bg-white'>${r.repairDate||''} - ${r.status||''}</div>`).join('')||'<p>데이터 없음</p>'; }
 
-    async function saveRtuToDB(rtu){ if(!rtu.id) rtu.id='RTU-'+Date.now(); await set(ref(db,`rtuList/${rtu.id}`),rtu); }
-    async function saveInspectionToDB(ins){ if(!ins.id) ins.id='INS-'+Date.now(); await set(ref(db,`inspectionList/${ins.id}`),ins); }
-    async function saveRepairToDB(rep){ if(!rep.id) rep.id='REP-'+Date.now(); await set(ref(db,`repairList/${rep.id}`),rep); }
+    function updateDashboard(){ document.getElementById('dashboard-total').textContent=rtuList.length; document.getElementById('dashboard-running').textContent=rtuList.filter(r=>r.status==='작동중').length; document.getElementById('dashboard-stopped').textContent=rtuList.filter(r=>r.status==='정지됨').length; document.getElementById('dashboard-needs-inspection').textContent=rtuList.filter(r=>r.status==='점검필요').length; document.getElementById('report-total-rtu').textContent=rtuList.length; document.getElementById('report-total-inspection').textContent=inspectionList.length; document.getElementById('report-total-repair').textContent=repairList.length; }
 
-    window.generateSampleData = async function(){
+    document.getElementById('add-sample-btn').addEventListener('click', async()=>{
       const sampleRtu=[
-        {id:'RTU-001',name:'서울-01',region:'서울',status:'작동중',model:'GMX-1000',capacity:'10RT',date:new Date().toISOString()},
-        {id:'RTU-002',name:'부산-02',region:'부산',status:'정지됨',model:'GMX-800',capacity:'8RT',date:new Date().toISOString()},
-        {id:'RTU-003',name:'대전-03',region:'대전',status:'점검필요',model:'GMX-500',capacity:'5RT',date:new Date().toISOString()}
+        {id:'RTU1',name:'Rooftop-1',region:'서울',status:'작동중'},
+        {id:'RTU2',name:'Rooftop-2',region:'부산',status:'정지됨'},
+        {id:'RTU3',name:'Rooftop-3',region:'대구',status:'점검필요'}
       ];
-      const sampleInspection=[
-        {id:'INS-001',rtuId:'RTU-001',inspectionDate:'2025-10-01',inspector:'김점검',result:'정상',notes:'팬 작동 양호'},
-        {id:'INS-002',rtuId:'RTU-002',inspectionDate:'2025-09-25',inspector:'박엔지니어',result:'주의',notes:'필터 오염'},
-        {id:'INS-003',rtuId:'RTU-003',inspectionDate:'2025-10-10',inspector:'이테스트',result:'불량',notes:'컴프레서 이상'}
+      const sampleInsp=[
+        {id:'INS1',rtuId:'RTU1',inspectionDate:'2025-10-01',result:'정상'},
+        {id:'INS2',rtuId:'RTU2',inspectionDate:'2025-10-05',result:'주의'},
+        {id:'INS3',rtuId:'RTU3',inspectionDate:'2025-10-10',result:'이상'}
       ];
-      const sampleRepair=[
-        {id:'REP-001',rtuId:'RTU-003',repairDate:'2025-10-15',engineer:'조수리',status:'진행중',issue:'압축기 교체 예정'},
-        {id:'REP-002',rtuId:'RTU-002',repairDate:'2025-09-27',engineer:'최수리',status:'완료',issue:'필터 교체 완료'},
-        {id:'REP-003',rtuId:'RTU-001',repairDate:'2025-09-20',engineer:'김정비',status:'완료',issue:'냉매 보충'}
+      const sampleRep=[
+        {id:'REP1',rtuId:'RTU2',repairDate:'2025-10-12',status:'진행중'},
+        {id:'REP2',rtuId:'RTU3',repairDate:'2025-10-14',status:'완료'},
+        {id:'REP3',rtuId:'RTU1',repairDate:'2025-10-15',status:'요청'}
       ];
-      for(const r of sampleRtu) await saveRtuToDB(r);
-      for(const i of sampleInspection) await saveInspectionToDB(i);
-      for(const rp of sampleRepair) await saveRepairToDB(rp);
-      alert('✅ 테스트 데이터가 Firebase에 추가되었습니다!');
-    }
+      for(const r of sampleRtu) await set(ref(db, 'rtuList/'+r.id),r);
+      for(const i of sampleInsp) await set(ref(db, 'inspectionList/'+i.id),i);
+      for(const p of sampleRep) await set(ref(db, 'repairList/'+p.id),p);
+      alert('샘플 데이터가 추가되었습니다!');
+    });
 
-    function renderDashboard(){
-      document.getElementById('dashboard-total').textContent = rtuList.length;
-      document.getElementById('dashboard-running').textContent = rtuList.filter(r=>r.status==='작동중').length;
-      document.getElementById('dashboard-stopped').textContent = rtuList.filter(r=>r.status==='정지됨').length;
-      document.getElementById('dashboard-needs-inspection').textContent = rtuList.filter(r=>r.status==='점검필요').length;
-      document.getElementById('dashboard-monthly-inspection').textContent = inspectionList.length;
-      document.getElementById('dashboard-pending-repair').textContent = repairList.filter(r=>r.status!=='완료').length;
-      const latest=document.getElementById('dashboard-latest-list');
-      if(!rtuList.length){ latest.innerHTML='<p class="text-gray-500">등록된 장비가 없습니다.</p>'; return; }
-      latest.innerHTML=rtuList.map(r=>`<div class='flex justify-between items-center border-b pb-2'><span>${r.name} (${r.region})</span><span class='text-xs bg-blue-100 text-blue-800 px-2 py-0.5 rounded-full'>${r.status}</span></div>`).join('');
+    function switchTab(tabName){
+      document.querySelectorAll('.tab-page').forEach(el=>el.classList.add('hidden'));
+      document.getElementById(tabName)?.classList.remove('hidden');
+      document.querySelectorAll('.tab-btn').forEach(btn=>{
+        if(btn.dataset.tab===tabName){ btn.classList.add('tab-active','text-blue-600','border-blue-500'); btn.classList.remove('text-gray-500','border-transparent'); }
+        else { btn.classList.remove('tab-active','text-blue-600','border-blue-500'); btn.classList.add('text-gray-500','border-transparent'); }
+      });
     }
-
-    window.switchTab=function(tab){ document.querySelectorAll('.tab-page').forEach(e=>e.classList.add('hidden')); document.getElementById(tab).classList.remove('hidden'); document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('tab-active','border-blue-500','text-blue-600')); document.querySelector(`.tab-btn[data-tab="${tab}"]`).classList.add('tab-active','border-blue-500','text-blue-600'); };
   </script>
 </body>
 </html>
