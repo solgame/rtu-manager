@@ -8,14 +8,13 @@
   <style>
     body { font-family: Inter, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; background:#f3f4f6; }
     .thumb { width:96px; height:72px; object-fit:cover; border-radius:6px; box-shadow:0 1px 4px rgba(0,0,0,0.08); }
-    .thumb-detail { width: 150px; height: 100px; object-fit: cover; border-radius: 6px; cursor: pointer; transition: transform 0.15s; }
-    .thumb-detail:hover { transform: scale(1.03); }
     .hidden-file { position:absolute; left:-9999px; }
     .modal-bg { background: rgba(17,24,39,0.6); }
     .tab-active { border-color: #3b82f6 !important; color: #3b82f6; font-weight: 600; }
     .loading { display: inline-block; width: 20px; height: 20px; border: 3px solid rgba(59, 130, 246, 0.3); border-radius: 50%; border-top-color: #3b82f6; animation: spin 1s ease-in-out infinite; }
     @keyframes spin { to { transform: rotate(360deg); } }
-    .pagination-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+    /* 이미지 확대 모달 스타일 */
+    .full-image-modal img { max-width: 95vw; max-height: 95vh; object-fit: contain; }
   </style>
 </head>
 <body class="min-h-screen">
@@ -206,15 +205,15 @@
             <div class="lg:col-span-2">
               <h2 class="text-2xl font-bold text-gray-800 mb-4">RTU 등록 목록 (<span id="rtu-count">0</span>건)</h2>
               <div id="rtu-list" class="space-y-4">
-                <p class="text-gray-500 italic">등록된 RTU 장비가 없습니다.</p>
+                <p class="text-gray-500 italic">로딩 중...</p>
               </div>
-              <div id="rtu-pagination" class="flex justify-center mt-4"></div>
+              <div id="rtu-pagination" class="mt-4 flex justify-center space-x-2"></div>
             </div>
           </div>
         </div>
 
         <div id="inspection-manage" class="tab-page hidden">
-          <div class="grid grid-cols-1 lg:col-span-3 gap-6">
+          <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
             <div class="lg:col-span-1 bg-white p-6 rounded-xl shadow-lg border h-fit">
               <h2 class="text-xl font-bold text-gray-800 mb-4 border-b pb-2">점검 기록 등록</h2>
               <form id="inspection-form" class="space-y-4">
@@ -253,7 +252,7 @@
                       <label for="check3" class="block font-medium text-gray-700">3. 콘덴싱 코일</label>
                       <select id="check3" name="check3" class="mt-1 w-full border-gray-300 rounded-md p-1 border">
                         <option value="양호">양호</option>
-                        <option value="오염/청소필요">오염/청소필요</option>
+                        <option value="오염/청소필요">오염/청소필소</option>
                       </select>
                     </div>
                     <div>
@@ -360,9 +359,9 @@
             <div class="lg:col-span-2">
               <h2 class="text-2xl font-bold text-gray-800 mb-4">점검 기록 목록 (<span id="inspection-count">0</span>건)</h2>
               <div id="inspection-list" class="space-y-4">
-                <p class="text-gray-500 italic">등록된 점검 기록이 없습니다.</p>
+                <p class="text-gray-500 italic">로딩 중...</p>
               </div>
-              <div id="inspection-pagination" class="flex justify-center mt-4"></div>
+              <div id="inspection-pagination" class="mt-4 flex justify-center space-x-2"></div>
             </div>
           </div>
         </div>
@@ -404,9 +403,9 @@
             <div class="lg:col-span-2">
               <h2 class="text-2xl font-bold text-gray-800 mb-4">수리 기록 목록 (<span id="repair-count">0</span>건)</h2>
               <div id="repair-list" class="space-y-4">
-                <p class="text-gray-500 italic">등록된 수리 기록이 없습니다.</p>
+                <p class="text-gray-500 italic">로딩 중...</p>
               </div>
-              <div id="repair-pagination" class="flex justify-center mt-4"></div>
+              <div id="repair-pagination" class="mt-4 flex justify-center space-x-2"></div>
             </div>
           </div>
         </div>
@@ -446,11 +445,11 @@
       </button>
     </div>
   </div>
-  
-  <div id="image-zoom-modal" class="modal-bg hidden fixed inset-0 z-[60] flex items-center justify-center p-4" onclick="document.getElementById('image-zoom-modal').classList.add('hidden')">
-    <div class="max-w-4xl max-h-[90vh] w-full p-4">
-      <img id="zoomed-image" src="" alt="확대 이미지" class="max-w-full max-h-[80vh] w-auto h-auto mx-auto shadow-2xl rounded-lg">
-      <button class="absolute top-4 right-4 text-white hover:text-gray-200 transition" onclick="document.getElementById('image-zoom-modal').classList.add('hidden'); event.stopPropagation();">
+
+  <div id="image-enlarge-modal" class="modal-bg hidden fixed inset-0 z-50 flex items-center justify-center p-4">
+    <div class="full-image-modal relative">
+      <img id="enlarged-image" src="" alt="Enlarged Image">
+      <button id="close-enlarge-modal-btn" class="absolute top-4 right-4 text-white bg-black bg-opacity-50 p-2 rounded-full hover:bg-opacity-75 transition">
         <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
         </svg>
@@ -486,7 +485,7 @@
   </script>
 
   <script>
-    /* ==================== 전역 변수 및 설정 ==================== */
+    /* ==================== 전역 변수 ==================== */
     const STORAGE_KEYS = {
       RTU: 'rtuList',
       INSPECTION: 'inspectionList',
@@ -501,7 +500,7 @@
     let currentRtuMode = 'new';
     let currentModalData = { id: null, type: null };
 
-    // Pagination Settings
+    // Pagination constants and trackers
     const PAGE_SIZE = 10;
     let rtuCurrentPage = 1;
     let inspectionCurrentPage = 1;
@@ -511,23 +510,24 @@
       rtuForm: document.getElementById('rtu-form'),
       rtuCount: document.getElementById('rtu-count'),
       rtuListContainer: document.getElementById('rtu-list'),
-      rtuPaginationContainer: document.getElementById('rtu-pagination'),
+      rtuPagination: document.getElementById('rtu-pagination'),
       inspectionForm: document.getElementById('inspection-form'),
       inspectionCount: document.getElementById('inspection-count'),
       inspectionListContainer: document.getElementById('inspection-list'),
-      inspectionPaginationContainer: document.getElementById('inspection-pagination'),
+      inspectionPagination: document.getElementById('inspection-pagination'),
       inspectionRtuIdSelect: document.getElementById('inspection-rtu-id'),
       repairForm: document.getElementById('repair-form'),
       repairCount: document.getElementById('repair-count'),
       repairListContainer: document.getElementById('repair-list'),
-      repairPaginationContainer: document.getElementById('repair-pagination'),
+      repairPagination: document.getElementById('repair-pagination'),
       repairRtuIdSelect: document.getElementById('repair-rtu-id'),
       detailModal: document.getElementById('detail-modal'),
       closeModalBtn: document.getElementById('close-modal-btn'),
       modalTitle: document.getElementById('modal-title'),
       modalContent: document.getElementById('modal-content'),
-      imageZoomModal: document.getElementById('image-zoom-modal'),
-      zoomedImage: document.getElementById('zoomed-image'),
+      imageEnlargeModal: document.getElementById('image-enlarge-modal'),
+      enlargedImage: document.getElementById('enlarged-image'),
+      closeEnlargeModalBtn: document.getElementById('close-enlarge-modal-btn'),
       tabBtns: document.querySelectorAll('.tab-btn'),
       tabPages: document.querySelectorAll('.tab-page'),
       modeNewBtn: document.getElementById('mode-new-btn'),
@@ -550,8 +550,7 @@
       reportTotalRtu: document.getElementById('report-total-rtu'),
       reportTotalInspection: document.getElementById('report-total-inspection'),
       reportTotalRepair: document.getElementById('report-total-repair')
-    };
-    /* ==================== Firebase 함수 ==================== */
+    }; /* ==================== Firebase 함수 ==================== */
     function waitForFirebase() {
       return new Promise((resolve) => {
         const checkInterval = setInterval(() => {
@@ -569,7 +568,7 @@
         const data = snapshot.val();
         rtuList = data ? Object.values(data) : [];
         if (isFirebaseReady) {
-          renderRtuList(rtuCurrentPage);
+          renderRtuList();
           populateRtuSelects();
           updateDashboard();
         }
@@ -579,7 +578,7 @@
         const data = snapshot.val();
         inspectionList = data ? Object.values(data) : [];
         if (isFirebaseReady) {
-          renderInspectionList(inspectionCurrentPage);
+          renderInspectionList();
           updateDashboard();
         }
       });
@@ -588,8 +587,7 @@
         const data = snapshot.val();
         repairList = data ? Object.values(data) : [];
         if (isFirebaseReady) {
-          // 수리 기록 미표시 오류 수정: onValue 콜백이 정상적으로 리스트를 업데이트하고 렌더링하도록 보장
-          renderRepairList(repairCurrentPage); 
+          renderRepairList();
           updateDashboard();
         }
       });
@@ -603,8 +601,8 @@
           dataObject[item.id] = item;
         });
         const dataRef = window.firebaseRef(window.firebaseDB, key);
-        // set을 호출하면 onValue 리스너가 트리거되어 렌더링을 담당합니다.
-        await window.firebaseSet(dataRef, dataObject); 
+        await window.firebaseSet(dataRef, dataObject);
+        // Firebase onValue listener should handle the update, but we force re-render for immediate UI feedback.
       } catch (error) {
         console.error(`Error saving to Firebase (${key}):`, error);
         alert('데이터 저장 중 오류가 발생했습니다. 네트워크 연결을 확인해주세요.');
@@ -612,8 +610,7 @@
     }
     function saveList(key, list) {
       return saveToFirebase(key, list);
-    } 
-    /* ==================== 유틸리티 함수 ==================== */
+    } /* ==================== 유틸리티 함수 ==================== */
     function formatDate(dateString) {
       if (!dateString) return '날짜 정보 없음';
       try {
@@ -637,81 +634,92 @@
       }
     }
     function isUrl(str) {
-      try {
-        new URL(str);
-        return true;
-      } catch {
-        return false;
-      }
+      if (!str) return false;
+      // Basic check for http(s)
+      return str.startsWith('http://') || str.startsWith('https://');
     }
     function generateUniqueId() {
       return Date.now().toString(36) + Math.random().toString(36).substring(2, 5);
-    } 
-    
-    /* ==================== 페이지네이션 함수 ==================== */
-    function renderPagination(containerElement, totalItems, currentPage, type) {
+    } /* ==================== 페이지네이션 함수 ==================== */
+    function changePage(listName, newPage) {
+      if (listName === 'rtu') {
+        rtuCurrentPage = newPage;
+        renderRtuList();
+      } else if (listName === 'inspection') {
+        inspectionCurrentPage = newPage;
+        renderInspectionList();
+      } else if (listName === 'repair') {
+        repairCurrentPage = newPage;
+        renderRepairList();
+      }
+    }
+    function createPaginationControls(listName, totalItems, currentPage) {
       const totalPages = Math.ceil(totalItems / PAGE_SIZE);
-      containerElement.innerHTML = '';
-
+      const paginationContainer = elements[`${listName}Pagination`];
+      paginationContainer.innerHTML = '';
       if (totalPages <= 1) return;
 
-      let html = `<nav class="flex items-center space-x-2">`;
-      
+      const createButton = (page, text, disabled = false) => {
+        const btn = document.createElement('button');
+        btn.textContent = text;
+        btn.className = `px-3 py-1 text-sm font-medium rounded transition duration-150 ${
+          disabled
+            ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
+            : page === currentPage
+            ? 'bg-blue-600 text-white'
+            : 'bg-white text-gray-700 hover:bg-gray-100 border border-gray-300'
+        }`;
+        btn.disabled = disabled;
+        if (!disabled) {
+          btn.addEventListener('click', () => changePage(listName, page));
+        }
+        return btn;
+      };
+
       // Previous button
-      html += `<button class="pagination-btn bg-gray-200 text-gray-700 py-2 px-3 rounded-lg text-sm hover:bg-gray-300 transition" data-page="${currentPage - 1}" data-type="${type}" ${currentPage === 1 ? 'disabled' : ''}>이전</button>`;
+      paginationContainer.appendChild(createButton(currentPage - 1, '이전', currentPage === 1));
 
-      // Page buttons (Simplified: show up to 5 surrounding pages)
-      const startPage = Math.max(1, currentPage - 2);
-      const endPage = Math.min(totalPages, currentPage + 2);
+      // Page buttons (display a max of 5 pages)
+      let startPage = Math.max(1, currentPage - 2);
+      let endPage = Math.min(totalPages, currentPage + 2);
 
-      for (let i = startPage; i <= endPage; i++) {
-        const isActive = i === currentPage ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200';
-        html += `<button class="pagination-btn ${isActive} py-2 px-3 rounded-lg text-sm transition" data-page="${i}" data-type="${type}">${i}</button>`;
+      if (currentPage - 2 < 1) {
+          endPage = Math.min(totalPages, 5);
+      }
+      if (currentPage + 2 > totalPages) {
+          startPage = Math.max(1, totalPages - 4);
       }
       
+      for (let i = startPage; i <= endPage; i++) {
+        paginationContainer.appendChild(createButton(i, i.toString()));
+      }
+
       // Next button
-      html += `<button class="pagination-btn bg-gray-200 text-gray-700 py-2 px-3 rounded-lg text-sm hover:bg-gray-300 transition" data-page="${currentPage + 1}" data-type="${type}" ${currentPage === totalPages ? 'disabled' : ''}>다음</button>`;
-      
-      html += `</nav>`;
-      containerElement.innerHTML = html;
-    }
-    
-    function changePage(page, type) {
-        if (page < 1) return;
-        if (type === 'rtu') {
-            const totalPages = Math.ceil(rtuList.length / PAGE_SIZE);
-            if (page > totalPages) return;
-            rtuCurrentPage = page;
-            renderRtuList(page);
-        } else if (type === 'inspection') {
-            const totalPages = Math.ceil(inspectionList.length / PAGE_SIZE);
-            if (page > totalPages) return;
-            inspectionCurrentPage = page;
-            renderInspectionList(page);
-        } else if (type === 'repair') {
-            const totalPages = Math.ceil(repairList.length / PAGE_SIZE);
-            if (page > totalPages) return;
-            repairCurrentPage = page;
-            renderRepairList(page);
-        }
+      paginationContainer.appendChild(createButton(currentPage + 1, '다음', currentPage === totalPages));
     }
 
-    /* ==================== 렌더링 함수 (페이지네이션 적용) ==================== */
-    function renderRtuList(page) {
+    /* ==================== 렌더링 함수 ==================== */
+    function renderRtuList() {
+      const sortedRtuList = rtuList.sort((a, b) => new Date(b.lastUpdated || b.date) - new Date(a.lastUpdated || a.date));
       elements.rtuCount.textContent = rtuList.length;
+      
       if (rtuList.length === 0) {
         elements.rtuListContainer.innerHTML = '<p class="text-gray-500 italic">등록된 RTU 장비가 없습니다.</p>';
-        elements.rtuPaginationContainer.innerHTML = '';
+        elements.rtuPagination.innerHTML = '';
         return;
       }
       
-      const sortedRtuList = rtuList.sort((a, b) => new Date(b.date) - new Date(a.date));
-      const startIndex = (page - 1) * PAGE_SIZE;
-      const paginatedList = sortedRtuList.slice(startIndex, startIndex + PAGE_SIZE);
-      
+      // Pagination Slice
+      const start = (rtuCurrentPage - 1) * PAGE_SIZE;
+      const end = start + PAGE_SIZE;
+      const paginatedList = sortedRtuList.slice(start, end);
+
       elements.rtuListContainer.innerHTML = paginatedList.map(rtu => `
         <div class="bg-gray-50 p-4 rounded-xl shadow border flex items-start space-x-4 hover:shadow-lg transition duration-150">
-          <img src="${rtu.imageUrl1 && isUrl(rtu.imageUrl1) ? rtu.imageUrl1 : ''}" alt="${rtu.name}" class="thumb flex-shrink-0">
+          <img src="${rtu.imageUrl1 && isUrl(rtu.imageUrl1) ? rtu.imageUrl1 : 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7'}" 
+               alt="${rtu.name}" 
+               class="thumb flex-shrink-0" 
+               style="background-color:#ccc; ${!rtu.imageUrl1 || !isUrl(rtu.imageUrl1) ? 'border:1px solid #ddd; padding:10px;' : ''}">
           <div class="flex-grow">
             <div class="flex items-center justify-between">
               <h3 class="text-lg font-bold text-gray-800">${rtu.name}</h3>
@@ -727,22 +735,25 @@
           </div>
         </div>
       `).join('');
-
-      renderPagination(elements.rtuPaginationContainer, rtuList.length, rtuCurrentPage, 'rtu');
+      
+      createPaginationControls('rtu', rtuList.length, rtuCurrentPage);
     }
-    
-    function renderInspectionList(page) {
+
+    function renderInspectionList() {
+      const sortedInspectionList = inspectionList.sort((a, b) => new Date(b.inspectionDate) - new Date(a.inspectionDate));
       elements.inspectionCount.textContent = inspectionList.length;
+
       if (inspectionList.length === 0) {
         elements.inspectionListContainer.innerHTML = '<p class="text-gray-500 italic">등록된 점검 기록이 없습니다.</p>';
-        elements.inspectionPaginationContainer.innerHTML = '';
+        elements.inspectionPagination.innerHTML = '';
         return;
       }
       
-      const sortedInspectionList = inspectionList.sort((a, b) => new Date(b.inspectionDate) - new Date(a.inspectionDate));
-      const startIndex = (page - 1) * PAGE_SIZE;
-      const paginatedList = sortedInspectionList.slice(startIndex, startIndex + PAGE_SIZE);
-      
+      // Pagination Slice
+      const start = (inspectionCurrentPage - 1) * PAGE_SIZE;
+      const end = start + PAGE_SIZE;
+      const paginatedList = sortedInspectionList.slice(start, end);
+
       elements.inspectionListContainer.innerHTML = paginatedList.map(inspection => {
         const rtu = rtuList.find(r => r.id === inspection.rtuId);
         const rtuName = rtu ? rtu.name : `[알 수 없음] ${inspection.rtuId}`;
@@ -761,21 +772,24 @@
           </div>
         `;
       }).join('');
-
-      renderPagination(elements.inspectionPaginationContainer, inspectionList.length, inspectionCurrentPage, 'inspection');
+      
+      createPaginationControls('inspection', inspectionList.length, inspectionCurrentPage);
     }
 
-    function renderRepairList(page) {
+    function renderRepairList() {
+      const sortedRepairList = repairList.sort((a, b) => new Date(b.repairDate) - new Date(a.repairDate));
       elements.repairCount.textContent = repairList.length;
+
       if (repairList.length === 0) {
         elements.repairListContainer.innerHTML = '<p class="text-gray-500 italic">등록된 수리 기록이 없습니다.</p>';
-        elements.repairPaginationContainer.innerHTML = '';
+        elements.repairPagination.innerHTML = '';
         return;
       }
       
-      const sortedRepairList = repairList.sort((a, b) => new Date(b.repairDate) - new Date(a.repairDate));
-      const startIndex = (page - 1) * PAGE_SIZE;
-      const paginatedList = sortedRepairList.slice(startIndex, startIndex + PAGE_SIZE);
+      // Pagination Slice
+      const start = (repairCurrentPage - 1) * PAGE_SIZE;
+      const end = start + PAGE_SIZE;
+      const paginatedList = sortedRepairList.slice(start, end);
 
       elements.repairListContainer.innerHTML = paginatedList.map(repair => {
         const rtu = rtuList.find(r => r.id === repair.rtuId);
@@ -795,8 +809,8 @@
           </div>
         `;
       }).join('');
-
-      renderPagination(elements.repairPaginationContainer, repairList.length, repairCurrentPage, 'repair');
+      
+      createPaginationControls('repair', repairList.length, repairCurrentPage);
     }
 
     function populateRtuSelects() {
@@ -805,28 +819,72 @@
       elements.repairRtuIdSelect.innerHTML = '<option value="">-- RTU를 선택하세요 --</option>' + options;
       elements.rtuModifySelect.innerHTML = '<option value="">-- 수정할 RTU를 선택하세요 --</option>' + options;
     }
-    
+
+    function updateDashboard() {
+      elements.dashboardTotal.textContent = rtuList.length;
+      const runningCount = rtuList.filter(rtu => rtu.status === '작동중').length;
+      const stoppedCount = rtuList.filter(rtu => rtu.status === '정지됨').length;
+      const needsInspectionCount = rtuList.filter(rtu => rtu.status === '점검필요').length;
+      elements.dashboardRunning.textContent = runningCount;
+      elements.dashboardStopped.textContent = stoppedCount;
+      elements.dashboardNeedsInspection.textContent = needsInspectionCount;
+
+      // Monthly Inspection Count
+      const startOfMonth = new Date();
+      startOfMonth.setDate(1);
+      startOfMonth.setHours(0, 0, 0, 0);
+      const monthlyInspectionCount = inspectionList.filter(inspection => new Date(inspection.inspectionDate) >= startOfMonth).length;
+      elements.dashboardMonthlyInspection.textContent = monthlyInspectionCount;
+
+      // Pending Repair Count
+      const pendingRepairCount = repairList.filter(repair => repair.status === '요청' || repair.status === '진행중').length;
+      elements.dashboardPendingRepair.textContent = pendingRepairCount;
+
+      // Latest RTU List
+      const latestRtu = rtuList.sort((a, b) => new Date(b.lastUpdated || b.date) - new Date(a.lastUpdated || a.date)).slice(0, 5);
+      if (latestRtu.length === 0) {
+        elements.dashboardLatestList.innerHTML = '<p class="text-gray-500">등록된 장비가 없습니다.</p>';
+      } else {
+        elements.dashboardLatestList.innerHTML = latestRtu.map(rtu => `
+          <div class="flex justify-between items-center py-2 border-b last:border-b-0">
+            <span class="font-medium text-gray-700">${rtu.name} (${rtu.region})</span>
+            <span class="px-2 py-0.5 text-xs font-semibold rounded ${getStatusColor(rtu.status)}">${rtu.status}</span>
+          </div>
+        `).join('');
+      }
+
+      // Report Page Update
+      elements.reportTotalRtu.textContent = rtuList.length;
+      elements.reportTotalInspection.textContent = inspectionList.length;
+      elements.reportTotalRepair.textContent = repairList.length;
+    }
+
     function showDetailModal(id, type) {
       currentModalData = { id, type };
       elements.modalTitle.textContent = `${type === 'rtu' ? 'RTU 장비' : type === 'inspection' ? '점검 기록' : '수리 기록'} 상세 정보`;
       elements.modalContent.innerHTML = '<div class="flex justify-center items-center"><div class="loading"></div></div>';
+      
       let data;
       if (type === 'rtu') data = rtuList.find(item => item.id === id);
       else if (type === 'inspection') data = inspectionList.find(item => item.id === id);
       else if (type === 'repair') data = repairList.find(item => item.id === id);
+      
       if (!data) {
         elements.modalContent.innerHTML = '<p class="text-red-500">요청한 정보를 찾을 수 없습니다.</p>';
         elements.detailModal.classList.remove('hidden');
         return;
       }
+      
       let html = '';
       if (type === 'rtu') {
-        // 이미지가 등록되지 않아도 상세화면이 열리도록 수정됨
-        const imageHtml = [1, 2, 3].map(i => {
-          const url = data[`imageUrl${i}`];
-          return url && isUrl(url) ? `<img src="${url}" alt="Image ${i}" class="thumb-detail image-zoom" data-src="${url}">` : '';
-        }).join('');
-        
+        // Function to create an image tag with click-to-enlarge functionality
+        const createEnlargeableImage = (url, alt) => {
+            if (url && isUrl(url)) {
+                return `<img src="${url}" alt="${alt}" class="thumb enlargeable-img cursor-pointer transition hover:opacity-75" data-full-src="${url}">`;
+            }
+            return '';
+        };
+
         html = `
           <p><span class="font-semibold">등록번호/ID:</span> ${data.name}</p>
           <p><span class="font-semibold">설치 장소/지역:</span> ${data.region}</p>
@@ -840,10 +898,12 @@
           <p><span class="font-semibold">고압 상한:</span> ${data.pressureHighLimit ? `${data.pressureHighLimit} PSI` : '미설정'}</p>
           <p><span class="font-semibold">저압 하한:</span> ${data.pressureLowLimit ? `${data.pressureLowLimit} PSI` : '미설정'}</p>
           <div class="mt-4 pt-3 border-t"><span class="font-semibold block mb-2">특이사항/메모:</span> ${data.notes.replace(/\n/g, '<br>') || '없음'}</div>
-          <div class="mt-4 pt-3 border-t"><span class="font-semibold block mb-2">장비 사진: (클릭시 확대)</span>
-            <div id="image-detail-container" class="flex flex-wrap gap-4">
-              ${imageHtml}
-              ${imageHtml.trim() === '' ? '<p class="text-gray-500">등록된 사진 없음</p>' : ''}
+          <div class="mt-4 pt-3 border-t"><span class="font-semibold block mb-2">장비 사진 (클릭 시 확대):</span>
+            <div class="flex flex-wrap gap-4">
+              ${createEnlargeableImage(data.imageUrl1, 'Image 1')}
+              ${createEnlargeableImage(data.imageUrl2, 'Image 2')}
+              ${createEnlargeableImage(data.imageUrl3, 'Image 3')}
+              ${!data.imageUrl1 && !data.imageUrl2 && !data.imageUrl3 ? '<p class="text-gray-500">등록된 사진 없음</p>' : ''}
             </div>
           </div>
         `;
@@ -896,24 +956,21 @@
       }
       elements.modalContent.innerHTML = html;
       elements.detailModal.classList.remove('hidden');
-    } 
-
-    function zoomImage(src) {
-      elements.zoomedImage.src = src;
-      elements.imageZoomModal.classList.remove('hidden');
     }
-    
+
+    function showEnlargedImage(src) {
+      elements.enlargedImage.src = src;
+      elements.imageEnlargeModal.classList.remove('hidden');
+    }
+
     /* ==================== 이벤트 핸들러 ==================== */
     function handleRtuSubmit(e) {
       e.preventDefault();
       const formData = new FormData(elements.rtuForm);
       const data = Object.fromEntries(formData.entries());
       const now = new Date().toISOString();
-      
-      let listToSave = [...rtuList];
-
       if (currentRtuMode === 'new') {
-        const existingRtu = listToSave.find(rtu => rtu.name === data.name);
+        const existingRtu = rtuList.find(rtu => rtu.name === data.name);
         if (existingRtu) {
           alert('오류: 동일한 RTU 등록번호/ID가 이미 존재합니다. 다른 ID를 사용해주세요.');
           return;
@@ -924,86 +981,98 @@
         data.imageUrl1 = imageBase64Data.imageUrl1;
         data.imageUrl2 = imageBase64Data.imageUrl2;
         data.imageUrl3 = imageBase64Data.imageUrl3;
-        listToSave.push(data);
+        rtuList.push(data);
         alert(`새 RTU 장비 '${data.name}'이(가) 등록되었습니다.`);
       } else {
         const idToModify = elements.rtuIdForModification.value;
-        const index = listToSave.findIndex(rtu => rtu.id === idToModify);
+        const index = rtuList.findIndex(rtu => rtu.id === idToModify);
         if (index === -1) {
           alert('오류: 수정할 RTU를 찾을 수 없습니다.');
           return;
         }
         const updatedRtu = {
-          ...listToSave[index],
+          ...rtuList[index],
           ...data,
           lastUpdated: now,
-          // 이미지가 새로 업로드되지 않았다면 기존 URL 유지
-          imageUrl1: imageBase64Data.imageUrl1 || listToSave[index].imageUrl1, 
-          imageUrl2: imageBase64Data.imageUrl2 || listToSave[index].imageUrl2,
-          imageUrl3: imageBase64Data.imageUrl3 || listToSave[index].imageUrl3,
+          // Only update image URL if a new image was uploaded (imageBase64Data is not empty)
+          imageUrl1: imageBase64Data.imageUrl1 || rtuList[index].imageUrl1,
+          imageUrl2: imageBase64Data.imageUrl2 || rtuList[index].imageUrl2,
+          imageUrl3: imageBase64Data.imageUrl3 || rtuList[index].imageUrl3,
         };
-        listToSave[index] = updatedRtu;
+        rtuList[index] = updatedRtu;
         alert(`RTU 장비 '${data.name}' 정보가 수정되었습니다.`);
       }
-
-      saveList(STORAGE_KEYS.RTU, listToSave).then(() => {
+      saveList(STORAGE_KEYS.RTU, rtuList).then(() => {
         elements.rtuForm.reset();
         resetRtuForm();
+        renderRtuList(); // Force re-render for immediate list update
       });
     }
+
     function handleInspectionSubmit(e) {
       e.preventDefault();
       const formData = new FormData(elements.inspectionForm);
       const data = Object.fromEntries(formData.entries());
       data.id = generateUniqueId();
-      
-      const listToSave = [...inspectionList, data]; // 새로운 기록을 추가
-      
-      saveList(STORAGE_KEYS.INSPECTION, listToSave).then(() => {
+      inspectionList.push(data);
+      saveList(STORAGE_KEYS.INSPECTION, inspectionList).then(() => {
         elements.inspectionForm.reset();
         alert('새 점검 기록이 등록되었습니다.');
+        renderInspectionList(); // Force re-render for immediate list update
       });
     }
+
     function handleRepairSubmit(e) {
       e.preventDefault();
       const formData = new FormData(elements.repairForm);
       const data = Object.fromEntries(formData.entries());
       data.id = generateUniqueId();
-      
-      const listToSave = [...repairList, data]; // 새로운 기록을 추가
-      
-      // 수리 기록 미표시 오류 수정: saveList 호출 후 Firebase onValue 리스너가 리스트를 업데이트하고 렌더링하도록 함
-      saveList(STORAGE_KEYS.REPAIR, listToSave).then(() => {
+      repairList.push(data);
+      saveList(STORAGE_KEYS.REPAIR, repairList).then(() => {
         elements.repairForm.reset();
         alert('새 수리 기록이 등록되었습니다.');
+        renderRepairList(); // Force re-render for immediate list update (Fix for issue #1)
       });
     }
+
     function handleDelete(id, type) {
       if (!confirm(`정말로 이 ${type === 'rtu' ? 'RTU 장비와 관련된 모든 기록' : type === 'inspection' ? '점검 기록' : '수리 기록'}을 삭제하시겠습니까?`)) {
         return;
       }
       if (type === 'rtu') {
+        const initialLength = rtuList.length;
         rtuList = rtuList.filter(item => item.id !== id);
-        inspectionList = inspectionList.filter(item => item.rtuId !== id);
-        repairList = repairList.filter(item => item.rtuId !== id);
-        saveList(STORAGE_KEYS.RTU, rtuList).then(() => {
-          saveList(STORAGE_KEYS.INSPECTION, inspectionList).then(() => {
-            saveList(STORAGE_KEYS.REPAIR, repairList).then(() => {
-              alert('RTU 장비 및 관련 기록이 삭제되었습니다.');
-              if (currentRtuMode === 'modify' && elements.rtuIdForModification.value === id) {
-                setRtuMode('new');
-              }
+        if (rtuList.length < initialLength) {
+          // Associated inspection and repair records should also be removed.
+          inspectionList = inspectionList.filter(item => item.rtuId !== id);
+          repairList = repairList.filter(item => item.rtuId !== id);
+          saveList(STORAGE_KEYS.RTU, rtuList).then(() => {
+            saveList(STORAGE_KEYS.INSPECTION, inspectionList).then(() => {
+              saveList(STORAGE_KEYS.REPAIR, repairList).then(() => {
+                alert('RTU 장비 및 관련 기록이 삭제되었습니다.');
+                if (currentRtuMode === 'modify' && elements.rtuIdForModification.value === id) {
+                  setRtuMode('new');
+                }
+                renderRtuList();
+              });
             });
           });
-        });
+        }
       } else if (type === 'inspection') {
         inspectionList = inspectionList.filter(item => item.id !== id);
-        saveList(STORAGE_KEYS.INSPECTION, inspectionList).then(() => alert('점검 기록이 삭제되었습니다.'));
+        saveList(STORAGE_KEYS.INSPECTION, inspectionList).then(() => {
+            alert('점검 기록이 삭제되었습니다.');
+            renderInspectionList();
+        });
       } else if (type === 'repair') {
         repairList = repairList.filter(item => item.id !== id);
-        saveList(STORAGE_KEYS.REPAIR, repairList).then(() => alert('수리 기록이 삭제되었습니다.'));
+        saveList(STORAGE_KEYS.REPAIR, repairList).then(() => {
+            alert('수리 기록이 삭제되었습니다.');
+            renderRepairList();
+        });
       }
     }
+
     function handleImageUpload(e) {
       const file = e.target.files[0];
       if (file) {
@@ -1019,8 +1088,10 @@
         reader.readAsDataURL(file);
       }
     }
+
     function setRtuMode(mode, rtuId = null) {
       currentRtuMode = mode;
+      // ... (mode setting logic is the same)
       if (mode === 'new') {
         elements.modeNewBtn.classList.add('bg-blue-600', 'text-white');
         elements.modeNewBtn.classList.remove('bg-gray-200', 'text-gray-700');
@@ -1042,14 +1113,17 @@
         document.getElementById('rtu-name').classList.add('hidden');
         elements.rtuModifySelect.classList.remove('hidden');
         elements.rtuSubmitBtn.textContent = 'RTU 정보 수정 저장';
+        // If an RTU is passed, load its data
         if (rtuId) {
           loadRtuForModification(rtuId);
         } else {
+          // Ensure form is clean when switching to modify mode without selection
           elements.rtuForm.reset();
           resetRtuForm();
         }
       }
     }
+
     function loadRtuForModification(rtuId) {
       const rtu = rtuList.find(r => r.id === rtuId);
       if (!rtu) {
@@ -1058,7 +1132,7 @@
       }
       elements.rtuIdForModification.value = rtu.id;
       // Populate form fields
-      document.getElementById('rtu-name').value = rtu.name; 
+      document.getElementById('rtu-name').value = rtu.name; // Keep name for display if needed, though hidden
       document.getElementById('rtu-region').value = rtu.region || '';
       document.getElementById('rtu-model').value = rtu.model || '';
       document.getElementById('rtu-capacity').value = rtu.capacity || '';
@@ -1090,6 +1164,7 @@
       // Set the select element to the current RTU
       elements.rtuModifySelect.value = rtuId;
     }
+
     function resetRtuForm() {
       // Clear base64 image data and previews
       imageBase64Data = { imageUrl1: '', imageUrl2: '', imageUrl3: '' };
@@ -1101,9 +1176,11 @@
         document.getElementById(`rtu-image${i}`).value = '';
       });
       elements.imagePreviewContainer.classList.add('hidden');
-    } 
+    }
+
     /* ==================== CSV 처리 함수 ==================== */
     function convertToCsv(data, type) {
+      // ... (Same CSV download logic)
       if (data.length === 0) return '';
       let headers;
       let csvRows;
@@ -1111,25 +1188,26 @@
         headers = ['ID', '등록번호', '설치지역', '모델명', '용량', '유닛종류', '냉매종류', '전기종류', '설치날짜', '현재상태', '고압상한(PSI)', '저압하한(PSI)', '메모', '사진URL1', '사진URL2', '사진URL3', '최종수정일'];
         csvRows = data.map(rtu => [
           rtu.id, rtu.name, rtu.region, rtu.model, rtu.capacity, rtu.unitType, rtu.refrigerant, rtu.electricPhase,
-          rtu.date, rtu.status, rtu.pressureHighLimit, rtu.pressureLowLimit, `"${(rtu.notes || '').replace(/"/g, '""').replace(/\n/g, '\\n')}"`,
+          rtu.date, rtu.status, rtu.pressureHighLimit, rtu.pressureLowLimit, `"${rtu.notes.replace(/"/g, '""').replace(/\n/g, '\\n')}"`,
           rtu.imageUrl1, rtu.imageUrl2, rtu.imageUrl3, rtu.lastUpdated
         ].join(','));
       } else if (type === 'inspection') {
         headers = ['ID', 'RTU_ID', '점검일자', '점검자', '결과', '필터', '콘텍터', '콘덴싱코일', '송풍모터', '증발기코일', '고압센서', '저압센서', '캐패시터', 'Comp1_고압(PSI)', 'Comp1_저압(PSI)', 'Comp1_전류(A)', 'Comp2_고압(PSI)', 'Comp2_저압(PSI)', 'Comp2_전류(A)', '과열도(F)', '과냉도(F)', '노트'];
         csvRows = data.map(i => [
           i.id, i.rtuId, i.inspectionDate, i.inspector, i.result, i.check1, i.check2, i.check3, i.check4, i.check5, i.check6, i.check7, i.check8,
-          i.comp1Hp, i.comp1Lp, i.comp1Amp, i.comp2Hp, i.comp2Lp, i.comp2Amp, i.superheat, i.subcool, `"${(i.notes || '').replace(/"/g, '""').replace(/\n/g, '\\n')}"`
+          i.comp1Hp, i.comp1Lp, i.comp1Amp, i.comp2Hp, i.comp2Lp, i.comp2Amp, i.superheat, i.subcool, `"${i.notes.replace(/"/g, '""').replace(/\n/g, '\\n')}"`
         ].join(','));
       } else if (type === 'repair') {
         headers = ['ID', 'RTU_ID', '수리일자', '담당자', '상태', '문제및조치내용'];
         csvRows = data.map(r => [
-          r.id, r.rtuId, r.repairDate, r.engineer, r.status, `"${(r.issue || '').replace(/"/g, '""').replace(/\n/g, '\\n')}"`
+          r.id, r.rtuId, r.repairDate, r.engineer, r.status, `"${r.issue.replace(/"/g, '""').replace(/\n/g, '\\n')}"`
         ].join(','));
       } else {
         return '';
       }
       return [headers.join(','), ...csvRows].join('\n');
     }
+
     function downloadCsv(data, filename) {
       const blob = new Blob([data], { type: 'text/csv;charset=utf-8;' });
       const link = document.createElement('a');
@@ -1139,6 +1217,7 @@
       link.click();
       document.body.removeChild(link);
     }
+
     document.getElementById('download-data-btn').addEventListener('click', () => {
       const rtuCsv = convertToCsv(rtuList, 'rtu');
       const inspectionCsv = convertToCsv(inspectionList, 'inspection');
@@ -1152,7 +1231,9 @@
         alert('데이터 다운로드가 완료되었습니다. 3개의 파일(rtu_data, inspection_data, repair_data)을 확인해주세요.');
       }
     });
+
     function parseCsv(csvText, type) {
+      // ... (Same CSV upload logic)
       const lines = csvText.split('\n').filter(line => line.trim() !== '');
       if (lines.length < 2) return [];
       const headers = lines[0].split(',');
@@ -1222,6 +1303,7 @@
       }
       return data;
     }
+
     document.getElementById('csv-upload').addEventListener('change', async (e) => {
       const files = Array.from(e.target.files);
       if (files.length === 0) return;
@@ -1241,15 +1323,18 @@
         }
       }
       if (rtuData.length > 0) {
-        await saveList(STORAGE_KEYS.RTU, rtuData);
+        rtuList = rtuData;
+        await saveList(STORAGE_KEYS.RTU, rtuList);
         console.log(`RTU 데이터 ${rtuData.length}건 업로드 및 저장 완료.`);
       }
       if (inspectionData.length > 0) {
-        await saveList(STORAGE_KEYS.INSPECTION, inspectionData);
+        inspectionList = inspectionData;
+        await saveList(STORAGE_KEYS.INSPECTION, inspectionList);
         console.log(`점검 데이터 ${inspectionData.length}건 업로드 및 저장 완료.`);
       }
       if (repairData.length > 0) {
-        await saveList(STORAGE_KEYS.REPAIR, repairData);
+        repairList = repairData;
+        await saveList(STORAGE_KEYS.REPAIR, repairList);
         console.log(`수리 데이터 ${repairData.length}건 업로드 및 저장 완료.`);
       }
       if (rtuData.length + inspectionData.length + repairData.length > 0) {
@@ -1257,11 +1342,13 @@
       } else {
         alert('유효한 RTU/점검/수리 CSV 파일이 선택되지 않았습니다. 파일명에 "rtu_data", "inspection_data", "repair_data" 중 하나가 포함되어야 합니다.');
       }
-    }); 
+    });
+
     /* ==================== 초기화 및 이벤트 등록 ==================== */
     document.addEventListener('DOMContentLoaded', () => {
       // Load data from Firebase on startup
       loadFromFirebase();
+
       // Tab switching logic
       elements.tabBtns.forEach(btn => {
         btn.addEventListener('click', () => {
@@ -1279,13 +1366,21 @@
           // Update data on tab switch for immediate changes (e.g. dashboard)
           if (tab === 'dashboard' || tab === 'report-page') {
             updateDashboard();
+          } else if (tab === 'rtu-manage') {
+            renderRtuList();
+          } else if (tab === 'inspection-manage') {
+            renderInspectionList();
+          } else if (tab === 'repair-manage') {
+            renderRepairList();
           }
         });
       });
+
       // Form submission
       elements.rtuForm.addEventListener('submit', handleRtuSubmit);
       elements.inspectionForm.addEventListener('submit', handleInspectionSubmit);
       elements.repairForm.addEventListener('submit', handleRepairSubmit);
+
       // Delete/Detail events (Delegation)
       document.addEventListener('click', (e) => {
         if (e.target.classList.contains('delete-rtu-btn')) {
@@ -1300,15 +1395,9 @@
           setRtuMode('modify', e.target.dataset.id);
           document.getElementById('rtu-manage').classList.remove('hidden');
           document.querySelector('[data-tab="rtu-manage"]').click();
-        } else if (e.target.classList.contains('pagination-btn')) {
-            const page = parseInt(e.target.dataset.page);
-            const type = e.target.dataset.type;
-            changePage(page, type);
-        } else if (e.target.classList.contains('image-zoom')) {
-            const src = e.target.dataset.src;
-            zoomImage(src);
         }
       });
+
       // Modal close
       elements.closeModalBtn.addEventListener('click', () => {
         elements.detailModal.classList.add('hidden');
@@ -1318,13 +1407,39 @@
           elements.detailModal.classList.add('hidden');
         }
       });
+
+      // Image Enlarge Modal close
+      elements.closeEnlargeModalBtn.addEventListener('click', () => {
+        elements.imageEnlargeModal.classList.add('hidden');
+        elements.enlargedImage.src = '';
+      });
+      elements.imageEnlargeModal.addEventListener('click', (e) => {
+        // Close only when clicking the modal background
+        if (e.target === elements.imageEnlargeModal) {
+          elements.imageEnlargeModal.classList.add('hidden');
+          elements.enlargedImage.src = '';
+        }
+      });
+      // Click handler for image enlargement inside the detail modal (Issue #2b Fix)
+      elements.modalContent.addEventListener('click', (e) => {
+          if (e.target.classList.contains('enlargeable-img')) {
+              const fullSrc = e.target.dataset.fullSrc;
+              if (fullSrc) {
+                  showEnlargedImage(fullSrc);
+              }
+          }
+      });
+
+
       // Image upload
       document.getElementById('rtu-image1').addEventListener('change', handleImageUpload);
       document.getElementById('rtu-image2').addEventListener('change', handleImageUpload);
       document.getElementById('rtu-image3').addEventListener('change', handleImageUpload);
+
       // RTU Mode Switch
       elements.modeNewBtn.addEventListener('click', () => setRtuMode('new'));
       elements.modeModifyBtn.addEventListener('click', () => setRtuMode('modify'));
+
       // RTU Modification Select Change
       elements.rtuModifySelect.addEventListener('change', (e) => {
         const selectedId = e.target.value;
@@ -1337,41 +1452,6 @@
         }
       });
     });
-    // 대시보드 업데이트 함수 (페이지네이션과는 별개)
-    function updateDashboard() {
-      elements.dashboardTotal.textContent = rtuList.length;
-      const runningCount = rtuList.filter(rtu => rtu.status === '작동중').length;
-      const stoppedCount = rtuList.filter(rtu => rtu.status === '정지됨').length;
-      const needsInspectionCount = rtuList.filter(rtu => rtu.status === '점검필요').length;
-      elements.dashboardRunning.textContent = runningCount;
-      elements.dashboardStopped.textContent = stoppedCount;
-      elements.dashboardNeedsInspection.textContent = needsInspectionCount;
-      // Monthly Inspection Count
-      const startOfMonth = new Date();
-      startOfMonth.setDate(1);
-      startOfMonth.setHours(0, 0, 0, 0);
-      const monthlyInspectionCount = inspectionList.filter(inspection => new Date(inspection.inspectionDate) >= startOfMonth).length;
-      elements.dashboardMonthlyInspection.textContent = monthlyInspectionCount;
-      // Pending Repair Count
-      const pendingRepairCount = repairList.filter(repair => repair.status === '요청' || repair.status === '진행중').length;
-      elements.dashboardPendingRepair.textContent = pendingRepairCount;
-      // Latest RTU List
-      const latestRtu = rtuList.sort((a, b) => new Date(b.lastUpdated || b.date) - new Date(a.lastUpdated || a.date)).slice(0, 5);
-      if (latestRtu.length === 0) {
-        elements.dashboardLatestList.innerHTML = '<p class="text-gray-500">등록된 장비가 없습니다.</p>';
-      } else {
-        elements.dashboardLatestList.innerHTML = latestRtu.map(rtu => `
-          <div class="flex justify-between items-center py-2 border-b last:border-b-0">
-            <span class="font-medium text-gray-700">${rtu.name} (${rtu.region})</span>
-            <span class="px-2 py-0.5 text-xs font-semibold rounded ${getStatusColor(rtu.status)}">${rtu.status}</span>
-          </div>
-        `).join('');
-      }
-      // Report Page Update
-      elements.reportTotalRtu.textContent = rtuList.length;
-      elements.reportTotalInspection.textContent = inspectionList.length;
-      elements.reportTotalRepair.textContent = repairList.length;
-    }
   </script>
 </body>
 </html>
