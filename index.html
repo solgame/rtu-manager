@@ -762,7 +762,8 @@
       
       elements.inspectionListContainer.innerHTML = paginatedList.map(inspection => {
         const rtu = rtuList.find(r => r.id === inspection.rtuId);
-        const rtuName = rtu ? rtu.name : `[알 수 없음] ${inspection.rtuId}`;
+        // RTU가 삭제된 경우 '[알 수 없음]'으로 표시
+        const rtuName = rtu ? rtu.name : `<span class="text-red-500">[알 수 없음]</span> ${inspection.rtuId}`; 
         return `
           <div class="bg-white p-4 rounded-xl shadow border hover:shadow-lg transition duration-150">
             <div class="flex items-center justify-between">
@@ -796,7 +797,8 @@
 
       elements.repairListContainer.innerHTML = paginatedList.map(repair => {
         const rtu = rtuList.find(r => r.id === repair.rtuId);
-        const rtuName = rtu ? rtu.name : `[알 수 없음] ${repair.rtuId}`;
+        // RTU가 삭제된 경우 '[알 수 없음]'으로 표시
+        const rtuName = rtu ? rtu.name : `<span class="text-red-500">[알 수 없음]</span> ${repair.rtuId}`; 
         
         // **********************************************
         // [수정된 부분 2] repair.issue에 값이 없을 때 렌더링 오류가 발생하지 않도록 안전하게 처리
@@ -873,8 +875,9 @@
         `;
       } else if (type === 'inspection') {
         const rtu = rtuList.find(r => r.id === data.rtuId) || {};
+        const rtuIdentifier = rtu.name ? `${rtu.name} (${rtu.region || '정보 없음'})` : `[삭제된 장비] ${data.rtuId}`;
         html = `
-          <p><span class="font-semibold">대상 RTU:</span> ${rtu.name || data.rtuId} (${rtu.region || '정보 없음'})</p>
+          <p><span class="font-semibold">대상 RTU:</span> ${rtuIdentifier}</p>
           <p><span class="font-semibold">점검 날짜:</span> ${formatDate(data.inspectionDate)}</p>
           <p><span class="font-semibold">점검자:</span> ${data.inspector}</p>
           <p><span class="font-semibold">최종 결과:</span> <span class="px-2 py-0.5 text-xs font-semibold rounded ${getStatusColor(data.result)}">${data.result}</span></p>
@@ -910,8 +913,9 @@
         `;
       } else if (type === 'repair') {
         const rtu = rtuList.find(r => r.id === data.rtuId) || {};
+        const rtuIdentifier = rtu.name ? `${rtu.name} (${rtu.region || '정보 없음'})` : `[삭제된 장비] ${data.rtuId}`;
         html = `
-          <p><span class="font-semibold">대상 RTU:</span> ${rtu.name || data.rtuId} (${rtu.region || '정보 없음'})</p>
+          <p><span class="font-semibold">대상 RTU:</span> ${rtuIdentifier}</p>
           <p><span class="font-semibold">수리/요청 날짜:</span> ${formatDate(data.repairDate)}</p>
           <p><span class="font-semibold">수리 담당자:</span> ${data.engineer}</p>
           <p><span class="font-semibold">처리 상태:</span> <span class="px-2 py-0.5 text-xs font-semibold rounded ${getStatusColor(data.status)}">${data.status}</span></p>
@@ -1003,22 +1007,36 @@
       });
     }
     function handleDelete(id, type) {
-      if (!confirm(`정말로 이 ${type === 'rtu' ? 'RTU 장비와 관련된 모든 기록' : type === 'inspection' ? '점검 기록' : '수리 기록'}을 삭제하시겠습니까?`)) {
-        return;
+      if (type === 'rtu') {
+          if (!confirm('정말로 이 RTU 장비를 삭제하시겠습니까? 관련 점검/수리 기록은 삭제되지 않고 유지됩니다.')) {
+              return;
+          }
+      } else {
+          if (!confirm(`정말로 이 ${type === 'inspection' ? '점검 기록' : '수리 기록'}을 삭제하시겠습니까?`)) {
+              return;
+          }
       }
+
       if (type === 'rtu') {
         rtuList = rtuList.filter(item => item.id !== id);
-        inspectionList = inspectionList.filter(item => item.rtuId !== id);
-        repairList = repairList.filter(item => item.rtuId !== id);
+        
+        // **********************************************
+        // [수정된 부분] 점검/수리 기록은 삭제하지 않고 보존합니다.
+        // inspectionList = inspectionList.filter(item => item.rtuId !== id); // 삭제 로직 제거
+        // repairList = repairList.filter(item => item.rtuId !== id);         // 삭제 로직 제거
+        // **********************************************
+
+        // RTU 목록만 저장하고, 연관된 기록 목록은 그대로 유지합니다.
         saveList(STORAGE_KEYS.RTU, rtuList).then(() => {
-          saveList(STORAGE_KEYS.INSPECTION, inspectionList).then(() => {
-            saveList(STORAGE_KEYS.REPAIR, repairList).then(() => {
-              alert('RTU 장비 및 관련 기록이 삭제되었습니다.');
-              if (currentRtuMode === 'modify' && elements.rtuIdForModification.value === id) {
-                setRtuMode('new');
-              }
-            });
-          });
+          alert('RTU 장비가 삭제되었습니다. 관련 점검 및 수리 기록은 목록에서 "[알 수 없음]"으로 표시됩니다.');
+          // RTU 목록이 업데이트되었으므로 모든 목록을 다시 렌더링하여 "[알 수 없음]"을 반영
+          renderRtuList(rtuCurrentPage);
+          renderInspectionList(inspectionCurrentPage); 
+          renderRepairList(repairCurrentPage); 
+
+          if (currentRtuMode === 'modify' && elements.rtuIdForModification.value === id) {
+            setRtuMode('new');
+          }
         });
       } else if (type === 'inspection') {
         inspectionList = inspectionList.filter(item => item.id !== id);
