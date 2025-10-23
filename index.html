@@ -18,8 +18,8 @@
     @keyframes spin { to { transform: rotate(360deg); } }
     .pagination-btn:disabled { opacity: 0.5; cursor: not-allowed; }
 
-    /* ========== 보고서 인쇄를 위한 CSS 추가 ========== */
-    .print-only { display: none; }
+    /* ========== 보고서 인쇄를 위한 CSS 추가 (print-only는 사용하지 않음) ========== */
+    .print-only { display: none; } /* 기존 코드에서 남아있는 print-only는 display:none; 상태 유지 */
     @media print {
       /* 앱의 기본 배경과 테두리를 숨겨 인쇄 영역을 깔끔하게 만듭니다. */
       .print-container {
@@ -32,10 +32,7 @@
       .print-hidden, .tab-page:not(#report-page), .tab-btn, .border-b, .mb-4, .pb-4 {
         display: none !important;
       }
-      /* 인쇄 시 상세 보고서 내용만 표시 */
-      .print-only {
-        display: block !important;
-      }
+      /* 인쇄 시 상세 보고서 내용만 표시를 위해 report-page와 detail-view를 강제 표시 */
       #report-page {
         display: block !important;
         padding: 0 !important;
@@ -57,9 +54,10 @@
           padding: 8px;
       }
       /* 상태 태그의 배경색은 인쇄 시 제거 */
-      .bg-green-100, .bg-yellow-100, .bg-red-100, .bg-slate-200 {
+      .bg-green-100, .bg-yellow-100, .bg-red-100, .bg-slate-200, .bg-indigo-100, .bg-pink-100, .bg-teal-100 {
           background-color: transparent !important;
           color: black !important;
+          border: 1px solid #ccc !important; /* 인쇄 시 잘 보이도록 테두리 추가 */
       }
     }
   </style>
@@ -414,7 +412,7 @@
         </div>
 
         <div id="repair-manage" class="tab-page hidden">
-          <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <div class="grid grid-cols-1 lg:col-cols-3 gap-6">
             <div class="lg:col-span-1 bg-white p-6 rounded-xl shadow-lg border h-fit">
               <h2 class="text-xl font-bold text-gray-800 mb-4 border-b pb-2">수리 기록 등록</h2>
               <form id="repair-form" class="space-y-4">
@@ -1448,7 +1446,7 @@
       elements.imageZoomModal.classList.remove('hidden');
     }
 
-    // [신규] 보고서 상세 목록 렌더링 함수
+    // [수정] 보고서 상세 목록 렌더링 함수 (print-only 제거)
     function renderReportDetail(type) {
       elements.reportDetailView.classList.remove('hidden');
       
@@ -1563,12 +1561,12 @@
         return;
       }
       
+      // print-only <div>를 제거하고, 화면에서만 보여야 할 요소에 print-hidden 추가
       elements.reportDetailView.innerHTML = `
-        <div class="print-only">
             <h3 class="text-2xl font-bold text-gray-800 mb-2">${title} (${list.length}건)</h3>
-            <div class="flex justify-between items-center mb-4">
+            <div class="flex justify-between items-center mb-4 print-hidden">
                 <p class="text-sm text-gray-600">데이터 기준: ${currentDate}</p>
-                <button id="print-report-btn" class="bg-blue-600 text-white font-semibold py-2 px-4 rounded-lg hover:bg-blue-700 transition duration-150 flex items-center print-hidden">
+                <button id="print-report-btn" class="bg-blue-600 text-white font-semibold py-2 px-4 rounded-lg hover:bg-blue-700 transition duration-150 flex items-center">
                     <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 17H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v2m-6 10v4m-2-4h4m4-4h2a2 2 0 0 0 2-2v-4a2 2 0 0 0-2-2H9a2 2 0 0 0-2 2v4a2 2 0 0 0 2 2h2"></path><path d="M17 9v2"></path></svg>
                     보고서 인쇄
                 </button>
@@ -1577,7 +1575,6 @@
             <div class="flex justify-center mt-6 print-hidden">
                 <button id="hide-report-btn" class="text-gray-500 hover:text-gray-700 font-medium text-sm">목록 닫기</button>
             </div>
-        </div>
       `;
 
       // 인쇄 및 닫기 버튼 이벤트 리스너 할당
