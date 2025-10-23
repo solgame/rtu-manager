@@ -814,13 +814,10 @@
       });
     }
 
-    // RTU 리스트 렌더링 함수 수정: isPrint 플래그 추가
-    function renderRtuList(page, isPrint = false) {
+    function renderRtuList(page) {
       const startIndex = (page - 1) * PAGE_SIZE;
       const endIndex = startIndex + PAGE_SIZE;
-      
-      // 인쇄 모드일 때는 전체 리스트, 아닐 때는 페이지네이션된 리스트 사용
-      const listToRender = isPrint ? rtuList : rtuList.slice(startIndex, endIndex);
+      const paginatedList = rtuList.slice(startIndex, endIndex);
 
       elements.rtuCount.textContent = formatNumber(rtuList.length);
       
@@ -830,7 +827,7 @@
         return;
       }
       
-      elements.rtuListContainer.innerHTML = listToRender.map(rtu => `
+      elements.rtuListContainer.innerHTML = paginatedList.map(rtu => `
         <div class="bg-gray-50 p-4 rounded-lg shadow border border-gray-200 hover:shadow-md transition duration-150">
           <div class="flex justify-between items-center mb-2">
             <h3 class="text-lg font-bold text-blue-700">${rtu.name}</h3>
@@ -845,12 +842,7 @@
         </div>
       `).join('');
       
-      // 인쇄 모드일 때는 페이지네이션을 숨김
-      if (isPrint) {
-        elements.rtuPaginationContainer.innerHTML = '';
-      } else {
-        renderPagination(elements.rtuPaginationContainer, rtuList.length, PAGE_SIZE, page, setRtuPage);
-      }
+      renderPagination(elements.rtuPaginationContainer, rtuList.length, PAGE_SIZE, page, setRtuPage);
     }
 
     function renderRtuDetail(rtu) {
@@ -896,14 +888,11 @@
     }
 
     /* ==================== 점검 기록 함수 ==================== */
-    // 점검 기록 리스트 렌더링 함수 수정: isPrint 플래그 추가
-    function renderInspectionList(page, isPrint = false) {
+    function renderInspectionList(page) {
       const startIndex = (page - 1) * PAGE_SIZE;
       const endIndex = startIndex + PAGE_SIZE;
       const sortedList = inspectionList.sort((a, b) => new Date(b.inspectionDate) - new Date(a.inspectionDate));
-      
-      // 인쇄 모드일 때는 전체 리스트, 아닐 때는 페이지네이션된 리스트 사용
-      const paginatedList = isPrint ? sortedList : sortedList.slice(startIndex, endIndex);
+      const paginatedList = sortedList.slice(startIndex, endIndex);
 
       elements.inspectionCount.textContent = formatNumber(inspectionList.length);
 
@@ -931,12 +920,7 @@
         `;
       }).join('');
 
-      // 인쇄 모드일 때는 페이지네이션을 숨김
-      if (isPrint) {
-        elements.inspectionPaginationContainer.innerHTML = '';
-      } else {
-        renderPagination(elements.inspectionPaginationContainer, inspectionList.length, PAGE_SIZE, page, setInspectionPage);
-      }
+      renderPagination(elements.inspectionPaginationContainer, inspectionList.length, PAGE_SIZE, page, setInspectionPage);
     }
     
     function renderInspectionDetail(inspection) {
@@ -998,14 +982,11 @@
     }
 
     /* ==================== 수리 기록 함수 ==================== */
-    // 수리 기록 리스트 렌더링 함수 수정: isPrint 플래그 추가
-    function renderRepairList(page, isPrint = false) {
+    function renderRepairList(page) {
       const startIndex = (page - 1) * PAGE_SIZE;
       const endIndex = startIndex + PAGE_SIZE;
       const sortedList = repairList.sort((a, b) => new Date(b.repairDate) - new Date(a.repairDate));
-      
-      // 인쇄 모드일 때는 전체 리스트, 아닐 때는 페이지네이션된 리스트 사용
-      const paginatedList = isPrint ? sortedList : sortedList.slice(startIndex, endIndex);
+      const paginatedList = sortedList.slice(startIndex, endIndex);
 
       elements.repairCount.textContent = formatNumber(repairList.length);
 
@@ -1033,12 +1014,7 @@
         `;
       }).join('');
 
-      // 인쇄 모드일 때는 페이지네이션을 숨김
-      if (isPrint) {
-        elements.repairPaginationContainer.innerHTML = '';
-      } else {
-        renderPagination(elements.repairPaginationContainer, repairList.length, PAGE_SIZE, page, setRepairPage);
-      }
+      renderPagination(elements.repairPaginationContainer, repairList.length, PAGE_SIZE, page, setRepairPage);
     }
 
     function renderRepairDetail(repair) {
@@ -1136,31 +1112,7 @@
         if (targetTab === 'dashboard' || targetTab === 'report-page') updateDashboard();
       });
     });
-    
-    // ====================================================================
-    // 1. 인쇄 미리보기 수정 로직 추가
-    // ====================================================================
-    
-    // 인쇄 직전 이벤트: 전체 리스트 렌더링으로 페이지네이션 무시
-    window.addEventListener('beforeprint', () => {
-        console.log('Before print: Rendering full lists...');
-        // isPrint 플래그를 true로 설정하여 전체 데이터를 렌더링
-        renderRtuList(1, true);
-        renderInspectionList(1, true);
-        renderRepairList(1, true);
-    });
 
-    // 인쇄 후 이벤트: 원래의 페이지네이션 상태로 복구
-    window.addEventListener('afterprint', () => {
-        console.log('After print: Restoring paginated lists...');
-        // isPrint 플래그 없이 호출하여 현재 페이지의 데이터만 다시 렌더링
-        renderRtuList(rtuCurrentPage);
-        renderInspectionList(inspectionCurrentPage);
-        renderRepairList(repairCurrentPage);
-    });
-    
-    // ====================================================================
-    
     // RTU 등록/수정 모드 전환
     elements.modeNewBtn.addEventListener('click', () => {
       currentRtuMode = 'new';
