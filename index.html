@@ -57,6 +57,39 @@
       }
     }
   </style>
+
+<!-- ✅ 인쇄 미리보기 전용 스타일 (데이터 영향 없음) -->
+<style>
+@media print {
+  /* 보고서 인쇄 시 모든 데이터가 보이도록 강제 표시 */
+  #report-page, #report-detail-view, #report-content {
+    display: block !important;
+    visibility: visible !important;
+    opacity: 1 !important;
+    color: #000 !important;
+    background: #fff !important;
+    overflow: visible !important;
+    position: static !important;
+  }
+  #report-content table {
+    display: table !important;
+    width: 100% !important;
+    border-collapse: collapse !important;
+  }
+  #report-content th, #report-content td {
+    display: table-cell !important;
+    border: 1px solid #999 !important;
+    padding: 6px 8px !important;
+    color: #000 !important;
+    background: transparent !important;
+  }
+  /* 숨김 방지 */
+  .hidden, .tab-page:not(#report-page), .tab-btn, .no-print { display: none !important; }
+  #report-page { margin: 0 !important; padding: 0 !important; }
+  @page { size: auto; margin: 10mm; }
+}
+</style>
+
 </head>
 <body class="min-h-screen">
   <div class="max-w-6xl mx-auto p-4 sm:p-8 print-container">
