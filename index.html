@@ -17,12 +17,57 @@
     .loading { display: inline-block; width: 20px; height: 20px; border: 3px solid rgba(59, 130, 246, 0.3); border-radius: 50%; border-top-color: #3b82f6; animation: spin 1s ease-in-out infinite; }
     @keyframes spin { to { transform: rotate(360deg); } }
     .pagination-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+    /* ========== 보고서 인쇄를 위한 CSS 추가 ========== */
+    .print-only { display: none; }
+    @media print {
+      /* 앱의 기본 배경과 테두리를 숨겨 인쇄 영역을 깔끔하게 만듭니다. */
+      .print-container {
+        padding: 0 !important;
+        margin: 0 !important;
+        box-shadow: none !important;
+        background: white !important;
+      }
+      /* 인쇄 시 숨겨야 할 요소 (버튼, 메뉴 등) */
+      .print-hidden, .tab-page:not(#report-page), .tab-btn, .border-b, .mb-4, .pb-4 {
+        display: none !important;
+      }
+      /* 인쇄 시 상세 보고서 내용만 표시 */
+      .print-only {
+        display: block !important;
+      }
+      #report-page {
+        display: block !important;
+        padding: 0 !important;
+        margin: 0 !important;
+      }
+      #report-detail-view {
+        display: block !important;
+        box-shadow: none !important;
+        border: none !important;
+        padding: 0 !important;
+        margin-top: 0 !important;
+      }
+      table {
+          width: 100%;
+          border-collapse: collapse;
+      }
+      th, td {
+          border: 1px solid #ccc;
+          padding: 8px;
+      }
+      /* 상태 태그의 배경색은 인쇄 시 제거 */
+      .bg-green-100, .bg-yellow-100, .bg-red-100, .bg-slate-200 {
+          background-color: transparent !important;
+          color: black !important;
+      }
+    }
   </style>
 </head>
 <body class="min-h-screen">
-  <div class="max-w-6xl mx-auto p-4 sm:p-8">
+  <div class="max-w-6xl mx-auto p-4 sm:p-8 print-container">
     <div class="bg-white rounded-2xl shadow-xl p-6">
-      <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center border-b pb-4 mb-4">
+      <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center border-b pb-4 mb-4 print-hidden">
         <h1 class="text-3xl font-extrabold text-gray-900 flex items-center">
           <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8 text-blue-600 mr-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37.526.34 1.144.354 1.63.153z"/>
@@ -47,7 +92,7 @@
         </div>
       </div>
 
-      <div class="border-b border-gray-200">
+      <div class="border-b border-gray-200 print-hidden">
         <nav class="-mb-px flex space-x-8" aria-label="Tabs">
           <button class="tab-btn tab-active border-b-2 border-blue-500 py-3 px-1 text-sm font-medium text-blue-600 transition duration-150" data-tab="dashboard">대시보드</button>
           <button class="tab-btn border-b-2 border-transparent py-3 px-1 text-sm font-medium text-gray-500 hover:text-gray-700 hover:border-gray-300 transition duration-150" data-tab="rtu-manage">RTU 등록/관리</button>
@@ -413,22 +458,29 @@
         </div>
 
         <div id="report-page" class="tab-page hidden">
-          <h2 class="text-2xl font-bold text-gray-800 mb-4">시스템 운영 보고서</h2>
-          <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-            <div class="bg-indigo-50 p-6 rounded-xl shadow-lg border border-indigo-200">
+          <h2 class="text-2xl font-bold text-gray-800 mb-4 print-hidden">시스템 운영 보고서</h2>
+          <p class="text-gray-600 mb-6 print-hidden">아래 요약 항목을 클릭하시면 상세 목록을 확인하고 인쇄하실 수 있습니다. 🖨️</p>
+
+          <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8 print-hidden">
+            <div id="report-rtu-summary" class="bg-indigo-50 p-6 rounded-xl shadow-lg border border-indigo-200 cursor-pointer hover:bg-indigo-100 transition duration-150">
               <p class="text-sm font-medium text-indigo-600">총 등록 RTU</p>
               <p id="report-total-rtu" class="text-3xl font-extrabold text-indigo-900 mt-1">0</p>
             </div>
-            <div class="bg-pink-50 p-6 rounded-xl shadow-lg border border-pink-200">
+            <div id="report-inspection-summary" class="bg-pink-50 p-6 rounded-xl shadow-lg border border-pink-200 cursor-pointer hover:bg-pink-100 transition duration-150">
               <p class="text-sm font-medium text-pink-600">총 점검 기록 건수</p>
               <p id="report-total-inspection" class="text-3xl font-extrabold text-pink-900 mt-1">0</p>
             </div>
-            <div class="bg-teal-50 p-6 rounded-xl shadow-lg border border-teal-200">
+            <div id="report-repair-summary" class="bg-teal-50 p-6 rounded-xl shadow-lg border border-teal-200 cursor-pointer hover:bg-teal-100 transition duration-150">
               <p class="text-sm font-medium text-teal-600">총 수리 기록 건수</p>
               <p id="report-total-repair" class="text-3xl font-extrabold text-teal-900 mt-1">0</p>
             </div>
           </div>
-          <p class="text-gray-600 border-t pt-4">보다 상세한 데이터 분석 및 보고는 상단의 **데이터 CSV 다운로드/업로드** 버튼을 통해 데이터를 추출하여 진행하실 수 있습니다. 모든 데이터는 Firebase 클라우드에 실시간으로 동기화됩니다.</p>
+          
+          <div id="report-detail-view" class="mt-8 bg-white p-6 rounded-xl shadow-lg border hidden">
+            <p class="text-gray-500">보고서를 보려면 위의 요약 항목을 클릭하세요.</p>
+          </div>
+          
+          <p class="text-gray-600 border-t pt-4 mt-8 print-hidden">보다 상세한 데이터 분석 및 보고는 상단의 **데이터 CSV 다운로드/업로드** 버튼을 통해 데이터를 추출하여 진행하실 수 있습니다.</p>
         </div>
       </div>
     </div>
@@ -550,7 +602,12 @@
       dashboardLatestList: document.getElementById('dashboard-latest-list'),
       reportTotalRtu: document.getElementById('report-total-rtu'),
       reportTotalInspection: document.getElementById('report-total-inspection'),
-      reportTotalRepair: document.getElementById('report-total-repair')
+      reportTotalRepair: document.getElementById('report-total-repair'),
+      // [신규] 보고서 상세 기능 관련 요소
+      reportRtuSummary: document.getElementById('report-rtu-summary'),
+      reportInspectionSummary: document.getElementById('report-inspection-summary'),
+      reportRepairSummary: document.getElementById('report-repair-summary'),
+      reportDetailView: document.getElementById('report-detail-view') 
     };
 
     /* ==================== Firebase 함수 ==================== */
@@ -671,7 +728,11 @@
     // 날짜 포맷 헬퍼
     function formatDate(dateString) {
       if (!dateString) return 'N/A';
-      return new Date(dateString).toLocaleDateString('ko-KR', {
+      // 날짜 객체 생성 시 표준 포맷이 아닐 경우 오류 방지
+      const date = new Date(dateString);
+      if (isNaN(date)) return dateString; // 유효하지 않은 날짜는 원본 문자열 반환
+
+      return date.toLocaleDateString('ko-KR', {
         year: 'numeric', month: '2-digit', day: '2-digit'
       });
     }
@@ -1064,105 +1125,120 @@
 
       if (type === 'rtu') {
         data = rtuList.find(r => r.name === id);
-        title = `RTU 상세 정보: ${data.name}`;
-        contentHTML = `
-          <p><strong>등록번호/ID:</strong> ${data.name}</p>
-          <p><strong>설치 장소/지역:</strong> ${data.region}</p>
-          <p><strong>현재 상태:</strong> <span class="px-2 py-0.5 text-xs font-semibold rounded ${getStatusColor(data.status)}">${data.status}</span></p>
-          <p><strong>설치(등록) 날짜:</strong> ${formatDate(data.date)}</p>
-          <p><strong>모델명:</strong> ${data.model || 'N/A'}</p>
-          <p><strong>용량:</strong> ${data.capacity || 'N/A'}</p>
-          <p><strong>유닛 종류:</strong> ${data.unitType || 'N/A'}</p>
-          <p><strong>냉매 종류:</strong> ${data.refrigerant || 'N/A'}</p>
-          <p><strong>전기 종류:</strong> ${data.electricPhase || 'N/A'}</p>
-          <p><strong>고압 상한 설정 (PSI):</strong> ${data.pressureHighLimit || 'N/A'}</p>
-          <p><strong>저압 하한 설정 (PSI):</strong> ${data.pressureLowLimit || 'N/A'}</p>
-          <p class="mt-4"><strong>특이사항 및 메모:</strong></p>
-          <p class="whitespace-pre-wrap border p-2 rounded-md bg-gray-50">${data.notes || '없음'}</p>
-          <div class="mt-4 border-t pt-4">
-            <p class="font-semibold">장비 사진:</p>
-            <div class="flex flex-wrap gap-3 mt-2">
-              ${data.imageUrl1 ? `<img src="${data.imageUrl1}" alt="Image 1" class="thumb-detail" onclick="zoomImage(this.src)">` : '<div class="thumb-detail bg-gray-200 flex items-center justify-center text-xs text-gray-500">사진 1 없음</div>'}
-              ${data.imageUrl2 ? `<img src="${data.imageUrl2}" alt="Image 2" class="thumb-detail" onclick="zoomImage(this.src)">` : '<div class="thumb-detail bg-gray-200 flex items-center justify-center text-xs text-gray-500">사진 2 없음</div>'}
-              ${data.imageUrl3 ? `<img src="${data.imageUrl3}" alt="Image 3" class="thumb-detail" onclick="zoomImage(this.src)">` : '<div class="thumb-detail bg-gray-200 flex items-center justify-center text-xs text-gray-500">사진 3 없음</div>'}
-            </div>
-          </div>
-        `;
+        if (!data) {
+          title = "장비 없음";
+          contentHTML = "<p>해당 RTU 장비를 찾을 수 없습니다.</p>";
+        } else {
+            title = `RTU 상세 정보: ${data.name}`;
+            contentHTML = `
+              <p><strong>등록번호/ID:</strong> ${data.name}</p>
+              <p><strong>설치 장소/지역:</strong> ${data.region}</p>
+              <p><strong>현재 상태:</strong> <span class="px-2 py-0.5 text-xs font-semibold rounded ${getStatusColor(data.status)}">${data.status}</span></p>
+              <p><strong>설치(등록) 날짜:</strong> ${formatDate(data.date)}</p>
+              <p><strong>모델명:</strong> ${data.model || 'N/A'}</p>
+              <p><strong>용량:</strong> ${data.capacity || 'N/A'}</p>
+              <p><strong>유닛 종류:</strong> ${data.unitType || 'N/A'}</p>
+              <p><strong>냉매 종류:</strong> ${data.refrigerant || 'N/A'}</p>
+              <p><strong>전기 종류:</strong> ${data.electricPhase || 'N/A'}</p>
+              <p><strong>고압 상한 설정 (PSI):</strong> ${data.pressureHighLimit || 'N/A'}</p>
+              <p><strong>저압 하한 설정 (PSI):</strong> ${data.pressureLowLimit || 'N/A'}</p>
+              <p class="mt-4"><strong>특이사항 및 메모:</strong></p>
+              <p class="whitespace-pre-wrap border p-2 rounded-md bg-gray-50">${data.notes || '없음'}</p>
+              <div class="mt-4 border-t pt-4">
+                <p class="font-semibold">장비 사진:</p>
+                <div class="flex flex-wrap gap-3 mt-2">
+                  ${data.imageUrl1 ? `<img src="${data.imageUrl1}" alt="Image 1" class="thumb-detail" onclick="zoomImage(this.src)">` : '<div class="thumb-detail bg-gray-200 flex items-center justify-center text-xs text-gray-500">사진 1 없음</div>'}
+                  ${data.imageUrl2 ? `<img src="${data.imageUrl2}" alt="Image 2" class="thumb-detail" onclick="zoomImage(this.src)">` : '<div class="thumb-detail bg-gray-200 flex items-center justify-center text-xs text-gray-500">사진 2 없음</div>'}
+                  ${data.imageUrl3 ? `<img src="${data.imageUrl3}" alt="Image 3" class="thumb-detail" onclick="zoomImage(this.src)">` : '<div class="thumb-detail bg-gray-200 flex items-center justify-center text-xs text-gray-500">사진 3 없음</div>'}
+                </div>
+              </div>
+            `;
+        }
       } else if (type === 'inspection') {
         data = inspectionList.find(i => i.id === id);
-        const rtuInfo = getRtuInfo(data.rtuId);
-        title = `점검 기록 상세 (RTU: ${rtuInfo.name})`;
-        const resultColor = data.result === '정상' ? 'bg-green-100 text-green-800' : 
-                          data.result === '주의' ? 'bg-yellow-100 text-yellow-800' : 'bg-red-100 text-red-800';
-        contentHTML = `
-          <p><strong>대상 RTU:</strong> ${rtuInfo.name}</p>
-          <p><strong>점검 날짜:</strong> ${formatDate(data.inspectionDate)}</p>
-          <p><strong>점검자:</strong> ${data.inspector}</p>
-          <p><strong>최종 점검 결과:</strong> <span class="px-2 py-0.5 text-sm font-semibold rounded ${resultColor}">${data.result}</span></p>
-          
-          <h4 class="text-md font-semibold mt-4 border-t pt-2">부품 점검 상태</h4>
-          <div class="grid grid-cols-2 gap-2 text-sm">
-            <p><strong>1. 필터:</strong> ${data.check1}</p>
-            <p><strong>2. 콘텍터:</strong> ${data.check2}</p>
-            <p><strong>3. 콘덴싱 코일:</strong> ${data.check3}</p>
-            <p><strong>4. 송풍 모터:</strong> ${data.check4}</p>
-            <p><strong>5. 증발기 코일:</strong> ${data.check5}</p>
-            <p><strong>6. 고압 센서:</strong> ${data.check6}</p>
-            <p><strong>7. 저압 센서:</strong> ${data.check7}</p>
-            <p><strong>8. 캐패시터:</strong> ${data.check8}</p>
-          </div>
-          
-          <h4 class="text-md font-semibold mt-4 border-t pt-2">운전 상태 측정</h4>
-          <div class="grid grid-cols-2 gap-4">
-            <div>
-              <p class="font-medium text-gray-700">Comp 1</p>
-              <p class="text-sm">고압: ${data.comp1Hp || 'N/A'} PSI</p>
-              <p class="text-sm">저압: ${data.comp1Lp || 'N/A'} PSI</p>
-              <p class="text-sm">전류: ${data.comp1Amp || 'N/A'} A</p>
-            </div>
-            <div>
-              <p class="font-medium text-gray-700">Comp 2</p>
-              <p class="text-sm">고압: ${data.comp2Hp || 'N/A'} PSI</p>
-              <p class="text-sm">저압: ${data.comp2Lp || 'N/A'} PSI</p>
-              <p class="text-sm">전류: ${data.comp2Amp || 'N/A'} A</p>
-            </div>
-          </div>
+        if (!data) {
+          title = "점검 기록 없음";
+          contentHTML = "<p>해당 점검 기록을 찾을 수 없습니다.</p>";
+        } else {
+            const rtuInfo = getRtuInfo(data.rtuId);
+            title = `점검 기록 상세 (RTU: ${rtuInfo.name})`;
+            const resultColor = data.result === '정상' ? 'bg-green-100 text-green-800' : 
+                              data.result === '주의' ? 'bg-yellow-100 text-yellow-800' : 'bg-red-100 text-red-800';
+            contentHTML = `
+              <p><strong>대상 RTU:</strong> ${rtuInfo.name}</p>
+              <p><strong>점검 날짜:</strong> ${formatDate(data.inspectionDate)}</p>
+              <p><strong>점검자:</strong> ${data.inspector}</p>
+              <p><strong>최종 점검 결과:</strong> <span class="px-2 py-0.5 text-sm font-semibold rounded ${resultColor}">${data.result}</span></p>
+              
+              <h4 class="text-md font-semibold mt-4 border-t pt-2">부품 점검 상태</h4>
+              <div class="grid grid-cols-2 gap-2 text-sm">
+                <p><strong>1. 필터:</strong> ${data.check1}</p>
+                <p><strong>2. 콘텍터:</strong> ${data.check2}</p>
+                <p><strong>3. 콘덴싱 코일:</strong> ${data.check3}</p>
+                <p><strong>4. 송풍 모터:</strong> ${data.check4}</p>
+                <p><strong>5. 증발기 코일:</strong> ${data.check5}</p>
+                <p><strong>6. 고압 센서:</strong> ${data.check6}</p>
+                <p><strong>7. 저압 센서:</strong> ${data.check7}</p>
+                <p><strong>8. 캐패시터:</strong> ${data.check8}</p>
+              </div>
+              
+              <h4 class="text-md font-semibold mt-4 border-t pt-2">운전 상태 측정</h4>
+              <div class="grid grid-cols-2 gap-4">
+                <div>
+                  <p class="font-medium text-gray-700">Comp 1</p>
+                  <p class="text-sm">고압: ${data.comp1Hp || 'N/A'} PSI</p>
+                  <p class="text-sm">저압: ${data.comp1Lp || 'N/A'} PSI</p>
+                  <p class="text-sm">전류: ${data.comp1Amp || 'N/A'} A</p>
+                </div>
+                <div>
+                  <p class="font-medium text-gray-700">Comp 2</p>
+                  <p class="text-sm">고압: ${data.comp2Hp || 'N/A'} PSI</p>
+                  <p class="text-sm">저압: ${data.comp2Lp || 'N/A'} PSI</p>
+                  <p class="text-sm">전류: ${data.comp2Amp || 'N/A'} A</p>
+                </div>
+              </div>
 
-          <h4 class="text-md font-semibold mt-4 border-t pt-2">온도 측정</h4>
-          <div class="grid grid-cols-2 gap-4">
-            <p class="text-sm"><strong>과열도:</strong> ${data.superheat || 'N/A'} ℉</p>
-            <p class="text-sm"><strong>과냉도:</strong> ${data.subcool || 'N/A'} ℉</p>
-          </div>
+              <h4 class="text-md font-semibold mt-4 border-t pt-2">온도 측정</h4>
+              <div class="grid grid-cols-2 gap-4">
+                <p class="text-sm"><strong>과열도:</strong> ${data.superheat || 'N/A'} ℉</p>
+                <p class="text-sm"><strong>과냉도:</strong> ${data.subcool || 'N/A'} ℉</p>
+              </div>
 
-          <p class="mt-4"><strong>특이사항 및 조치 내용:</strong></p>
-          <p class="whitespace-pre-wrap border p-2 rounded-md bg-gray-50">${data.notes || '없음'}</p>
-        `;
+              <p class="mt-4"><strong>특이사항 및 조치 내용:</strong></p>
+              <p class="whitespace-pre-wrap border p-2 rounded-md bg-gray-50">${data.notes || '없음'}</p>
+            `;
+        }
       } else if (type === 'repair') {
         data = repairList.find(r => r.id === id);
-        const rtuInfo = getRtuInfo(data.rtuId);
-        title = `수리 기록 상세 (RTU: ${rtuInfo.name})`;
-        let repairStatusColor;
-        switch(data.status) {
-          case '요청':
-            repairStatusColor = 'bg-red-100 text-red-800';
-            break;
-          case '진행중':
-            repairStatusColor = 'bg-yellow-100 text-yellow-800';
-            break;
-          case '완료':
-            repairStatusColor = 'bg-green-100 text-green-800';
-            break;
-          default:
-            repairStatusColor = 'bg-gray-100 text-gray-800';
+        if (!data) {
+          title = "수리 기록 없음";
+          contentHTML = "<p>해당 수리 기록을 찾을 수 없습니다.</p>";
+        } else {
+            const rtuInfo = getRtuInfo(data.rtuId);
+            title = `수리 기록 상세 (RTU: ${rtuInfo.name})`;
+            let repairStatusColor;
+            switch(data.status) {
+              case '요청':
+                repairStatusColor = 'bg-red-100 text-red-800';
+                break;
+              case '진행중':
+                repairStatusColor = 'bg-yellow-100 text-yellow-800';
+                break;
+              case '완료':
+                repairStatusColor = 'bg-green-100 text-green-800';
+                break;
+              default:
+                repairStatusColor = 'bg-gray-100 text-gray-800';
+            }
+            contentHTML = `
+              <p><strong>대상 RTU:</strong> ${rtuInfo.name}</p>
+              <p><strong>수리 요청/완료 날짜:</strong> ${formatDate(data.repairDate)}</p>
+              <p><strong>수리 담당자:</strong> ${data.engineer}</p>
+              <p><strong>처리 상태:</strong> <span class="px-2 py-0.5 text-sm font-semibold rounded ${repairStatusColor}">${data.status}</span></p>
+              <p class="mt-4"><strong>문제 및 조치 내용:</strong></p>
+              <p class="whitespace-pre-wrap border p-2 rounded-md bg-gray-50">${data.issue || '없음'}</p>
+            `;
         }
-        contentHTML = `
-          <p><strong>대상 RTU:</strong> ${rtuInfo.name}</p>
-          <p><strong>수리 요청/완료 날짜:</strong> ${formatDate(data.repairDate)}</p>
-          <p><strong>수리 담당자:</strong> ${data.engineer}</p>
-          <p><strong>처리 상태:</strong> <span class="px-2 py-0.5 text-sm font-semibold rounded ${repairStatusColor}">${data.status}</span></p>
-          <p class="mt-4"><strong>문제 및 조치 내용:</strong></p>
-          <p class="whitespace-pre-wrap border p-2 rounded-md bg-gray-50">${data.issue || '없음'}</p>
-        `;
       } else {
         title = "오류";
         contentHTML = "<p>요청된 데이터 타입을 찾을 수 없습니다.</p>";
@@ -1349,6 +1425,8 @@
         renderRepairList(repairCurrentPage);
       } else if (targetTab === 'dashboard' || targetTab === 'report-page') {
         updateDashboard();
+        // 보고서 탭으로 이동 시 상세 목록 숨기기
+        elements.reportDetailView.classList.add('hidden');
       }
     }
 
@@ -1369,6 +1447,157 @@
       elements.zoomedImage.src = src;
       elements.imageZoomModal.classList.remove('hidden');
     }
+
+    // [신규] 보고서 상세 목록 렌더링 함수
+    function renderReportDetail(type) {
+      elements.reportDetailView.classList.remove('hidden');
+      
+      let list = [];
+      let title = '';
+      let tableHTML = '';
+      const currentDate = formatDate(new Date().toISOString().split('T')[0]);
+
+      if (type === 'rtu') {
+        list = rtuList.sort((a, b) => new Date(b.date) - new Date(a.date));
+        title = `RTU 등록 목록`;
+        tableHTML = `
+          <table class="w-full text-sm text-left text-gray-500 mt-4 border-collapse">
+            <thead class="text-xs text-gray-700 uppercase bg-gray-50">
+              <tr>
+                <th scope="col" class="py-2 px-3 border-b">RTU ID</th>
+                <th scope="col" class="py-2 px-3 border-b">설치 지역</th>
+                <th scope="col" class="py-2 px-3 border-b">현재 상태</th>
+                <th scope="col" class="py-2 px-3 border-b">모델명/용량</th>
+                <th scope="col" class="py-2 px-3 border-b">설치일</th>
+                <th scope="col" class="py-2 px-3 border-b print-hidden">상세</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${list.map(rtu => `
+                <tr class="bg-white border-b hover:bg-gray-50">
+                  <td class="py-2 px-3 font-medium text-gray-900 whitespace-nowrap">${rtu.name}</td>
+                  <td class="py-2 px-3">${rtu.region}</td>
+                  <td class="py-2 px-3"><span class="px-2 py-0.5 text-xs font-semibold rounded ${getStatusColor(rtu.status)}">${rtu.status}</span></td>
+                  <td class="py-2 px-3">${rtu.model || 'N/A'} / ${rtu.capacity || 'N/A'}</td>
+                  <td class="py-2 px-3">${formatDate(rtu.date)}</td>
+                  <td class="py-2 px-3 print-hidden"><button data-id="${rtu.name}" data-type="rtu" class="report-detail-btn text-blue-600 hover:underline">보기</button></td>
+                </tr>
+              `).join('')}
+            </tbody>
+          </table>
+        `;
+      } else if (type === 'inspection') {
+        list = inspectionList.sort((a, b) => new Date(b.inspectionDate) - new Date(a.inspectionDate));
+        title = `점검 기록 목록`;
+        tableHTML = `
+          <table class="w-full text-sm text-left text-gray-500 mt-4 border-collapse">
+            <thead class="text-xs text-gray-700 uppercase bg-gray-50">
+              <tr>
+                <th scope="col" class="py-2 px-3 border-b">RTU ID</th>
+                <th scope="col" class="py-2 px-3 border-b">점검 날짜</th>
+                <th scope="col" class="py-2 px-3 border-b">점검자</th>
+                <th scope="col" class="py-2 px-3 border-b">최종 결과</th>
+                <th scope="col" class="py-2 px-3 border-b">고압(PSI) / 저압(PSI)</th>
+                <th scope="col" class="py-2 px-3 border-b print-hidden">상세</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${list.map(insp => {
+                const rtuInfo = getRtuInfo(insp.rtuId);
+                const resultColor = insp.result === '정상' ? 'bg-green-100 text-green-800' : insp.result === '주의' ? 'bg-yellow-100 text-yellow-800' : 'bg-red-100 text-red-800';
+                return `
+                <tr class="bg-white border-b hover:bg-gray-50">
+                  <td class="py-2 px-3 font-medium text-gray-900 whitespace-nowrap">${rtuInfo.name}</td>
+                  <td class="py-2 px-3">${formatDate(insp.inspectionDate)}</td>
+                  <td class="py-2 px-3">${insp.inspector}</td>
+                  <td class="py-2 px-3"><span class="px-2 py-0.5 text-xs font-semibold rounded ${resultColor}">${insp.result}</span></td>
+                  <td class="py-2 px-3">${insp.comp1Hp || 'N/A'} / ${insp.comp1Lp || 'N/A'}</td>
+                  <td class="py-2 px-3 print-hidden"><button data-id="${insp.id}" data-type="inspection" class="report-detail-btn text-blue-600 hover:underline">보기</button></td>
+                </tr>
+                `;
+              }).join('')}
+            </tbody>
+          </table>
+        `;
+      } else if (type === 'repair') {
+        list = repairList.sort((a, b) => new Date(b.repairDate) - new Date(a.repairDate));
+        title = `수리 기록 목록`;
+        tableHTML = `
+          <table class="w-full text-sm text-left text-gray-500 mt-4 border-collapse">
+            <thead class="text-xs text-gray-700 uppercase bg-gray-50">
+              <tr>
+                <th scope="col" class="py-2 px-3 border-b">RTU ID</th>
+                <th scope="col" class="py-2 px-3 border-b">수리 날짜</th>
+                <th scope="col" class="py-2 px-3 border-b">담당자</th>
+                <th scope="col" class="py-2 px-3 border-b">처리 상태</th>
+                <th scope="col" class="py-2 px-3 border-b">문제 요약</th>
+                <th scope="col" class="py-2 px-3 border-b print-hidden">상세</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${list.map(repair => {
+                const rtuInfo = getRtuInfo(repair.rtuId);
+                let repairStatusColor;
+                switch(repair.status) {
+                  case '요청': repairStatusColor = 'bg-red-100 text-red-800'; break;
+                  case '진행중': repairStatusColor = 'bg-yellow-100 text-yellow-800'; break;
+                  case '완료': repairStatusColor = 'bg-green-100 text-green-800'; break;
+                  default: repairStatusColor = 'bg-gray-100 text-gray-800';
+                }
+                return `
+                <tr class="bg-white border-b hover:bg-gray-50">
+                  <td class="py-2 px-3 font-medium text-gray-900 whitespace-nowrap">${rtuInfo.name}</td>
+                  <td class="py-2 px-3">${formatDate(repair.repairDate)}</td>
+                  <td class="py-2 px-3">${repair.engineer}</td>
+                  <td class="py-2 px-3"><span class="px-2 py-0.5 text-xs font-semibold rounded ${repairStatusColor}">${repair.status}</span></td>
+                  <td class="py-2 px-3 max-w-xs overflow-hidden truncate">${repair.issue ? repair.issue.substring(0, 30) + (repair.issue.length > 30 ? '...' : '') : '없음'}</td>
+                  <td class="py-2 px-3 print-hidden"><button data-id="${repair.id}" data-type="repair" class="report-detail-btn text-blue-600 hover:underline">보기</button></td>
+                </tr>
+                `;
+              }).join('')}
+            </tbody>
+          </table>
+        `;
+      } else {
+        elements.reportDetailView.innerHTML = '<p class="text-red-500">잘못된 보고서 유형입니다.</p>';
+        return;
+      }
+      
+      elements.reportDetailView.innerHTML = `
+        <div class="print-only">
+            <h3 class="text-2xl font-bold text-gray-800 mb-2">${title} (${list.length}건)</h3>
+            <div class="flex justify-between items-center mb-4">
+                <p class="text-sm text-gray-600">데이터 기준: ${currentDate}</p>
+                <button id="print-report-btn" class="bg-blue-600 text-white font-semibold py-2 px-4 rounded-lg hover:bg-blue-700 transition duration-150 flex items-center print-hidden">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 17H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v2m-6 10v4m-2-4h4m4-4h2a2 2 0 0 0 2-2v-4a2 2 0 0 0-2-2H9a2 2 0 0 0-2 2v4a2 2 0 0 0 2 2h2"></path><path d="M17 9v2"></path></svg>
+                    보고서 인쇄
+                </button>
+            </div>
+            ${tableHTML}
+            <div class="flex justify-center mt-6 print-hidden">
+                <button id="hide-report-btn" class="text-gray-500 hover:text-gray-700 font-medium text-sm">목록 닫기</button>
+            </div>
+        </div>
+      `;
+
+      // 인쇄 및 닫기 버튼 이벤트 리스너 할당
+      document.getElementById('print-report-btn').addEventListener('click', printReport);
+      document.getElementById('hide-report-btn').addEventListener('click', () => {
+        elements.reportDetailView.classList.add('hidden');
+      });
+      // 상세 보기 버튼 이벤트 리스너 재할당
+      document.querySelectorAll('.report-detail-btn').forEach(btn => btn.addEventListener('click', (e) => {
+        const id = e.target.dataset.id;
+        const detailType = e.target.dataset.type;
+        showDetailModal(id, detailType);
+      }));
+    }
+
+    // [신규] 인쇄 함수
+    function printReport() {
+        window.print();
+    }
+
 
     // CSV 다운로드 기능
     document.getElementById('download-data-btn').addEventListener('click', () => {
@@ -1570,6 +1799,21 @@
       renderRepairList(repairCurrentPage);
       populateRtuSelects();
       updateDashboard();
+
+      // [신규] 보고서 요약 클릭 이벤트 리스너 추가
+      elements.reportRtuSummary.addEventListener('click', () => {
+        elements.reportDetailView.classList.remove('hidden');
+        renderReportDetail('rtu');
+      });
+      elements.reportInspectionSummary.addEventListener('click', () => {
+        elements.reportDetailView.classList.remove('hidden');
+        renderReportDetail('inspection');
+      });
+      elements.reportRepairSummary.addEventListener('click', () => {
+        elements.reportDetailView.classList.remove('hidden');
+        renderReportDetail('repair');
+      });
+
     }).catch(console.error);
     
     // 페이지 로드 시 기본 탭 활성화 (대시보드)는 HTML 구조로 이미 처리됨
